@@ -147,8 +147,9 @@ class Clinic:
 
 
 class Doctor:
-    def __init__(self, doctor_id, license, proficiency):
+    def __init__(self, doctor_id, name, license, proficiency):
         self.__doctor_id = doctor_id
+        self.__name = name
         self.__license = license
         self.__proficiency = proficiency
         self.__medical_record = []
@@ -217,7 +218,7 @@ class Pet:
 
 my_clinic = Clinic("PetShop")
 
-doctor = Doctor("D01", "123", "Internal Medicine")
+doctor = Doctor("D01", "Sorawit", "123", "Internal Medicine")
 my_clinic.add_employee(doctor)
 
 customer = Customer("C01", "A", "1112", "A@gmail.com")
