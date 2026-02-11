@@ -98,6 +98,27 @@ class Customer:
     def id(self):
         return self.__customer_id
 
+class Member(Customer):
+    DiscountRate = 0
+    def __init__(self, customer_id, name, phone_number, email, points = 0):
+        super().__init__(customer_id, name, phone_number, email)
+        self.__points = points
+        
+class SilverMember(Member):
+    DiscountRate = 0.05
+    def __init__(self, customer_id, name, phone_number, email, points = 0):
+        super().__init__(customer_id, name, phone_number, email,points)
+
+class GoldMember(Member):
+    DiscountRate = 0.10
+    def __init__(self, customer_id, name, phone_number, email, points=0):
+        super().__init__(customer_id, name, phone_number, email, points)
+
+
+class PlatinumMember(Member):
+    DiscountRate = 0.10
+    def __init__(self, customer_id, name, phone_number, email, points=0):
+        super().__init__(customer_id, name, phone_number, email, points)
 
 class WorkSchedule:
     def __init__(self):
