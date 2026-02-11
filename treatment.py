@@ -2,6 +2,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import uuid
 
 app = FastAPI()
 
@@ -80,7 +81,6 @@ class MedicalRecord:
 
 
 class Clinic:
-    ID = 1
 
     def __init__(self, user):
         self.__user = user
@@ -135,7 +135,7 @@ class Clinic:
 
     def delete_treatment_record(self, id):
         for record in self.__medical_record:
-            if int(record.change_dict()["Id"]) == int(id):
+            if str(record.change_dict()["Id"]) == str(id):
                 self.__medical_record.remove(record)
 
                 return {
@@ -173,8 +173,9 @@ class Doctor:
 
         pet.update_symptom(data.symptom)
 
+        record_id = str(uuid.uuid4())
         record = MedicalRecord.create_med_history(
-            clinic_obj.ID,
+            record_id,
             data.owner_name,
             data.doctor_id,
             data.pet_name,
@@ -183,8 +184,6 @@ class Doctor:
             data.amount,
             pet
         )
-
-        clinic_obj.ID += 1
 
         return record
 
@@ -254,7 +253,7 @@ async def get_treatments():
 
 
 @app.delete("/treatment", tags=["Clinic Operation"])
-async def delete_treatment(id: int):
+async def delete_treatment(id: str):
     treatment = my_clinic.delete_treatment_record(id)
     return treatment
 
