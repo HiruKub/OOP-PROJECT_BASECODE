@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from datetime import datetime
+import uuid
 
 app = FastAPI()
 class Reservation :
@@ -63,8 +64,12 @@ class Clinic :
                 return customer
         return "Not Found"
     def create_transaction(self,customer_id,payment_type,price,service_list,today) :
-        bill = Bill(customer_id,payment_type,price,service_list,today)
+        transaction_ID = self.generate_ID()
+        bill = Bill(customer_id,transaction_ID,payment_type,price,service_list,today)
         return bill.create_bill()
+    def generate_ID(self) :
+        ID = uuid.uuid4().hex[:8]
+        return ID
     def start_payment(self,customer_id,payment_type) :
         customer = self.search_customer(customer_id)
         if (customer != "Not Found") :
@@ -97,15 +102,16 @@ class Payment :
         return "Success"
 
 class Bill :
-    def __init__(self,customer_id,payment_type,price,service_list,date) :
+    def __init__(self,customer_id,transaction_ID,payment_type,price,service_list,date) :
         self.__customer_id = customer_id
         self.__payment_type = payment_type
         self.__price = price
         self.__service_list = service_list
         self.__date = date
-
+        self.__transaction_id = transaction_ID
+    
     def create_bill(self) :
-        return f"CustomerID:{self.__customer_id}-Type:{self.__payment_type}-Price:{self.__price}-Service:{self.__service_list}-Date:{self.__date}"
+        return f"CustomerID:{self.__customer_id}-TransactionID:{self.__transaction_id}-Type:{self.__payment_type}-Price:{self.__price}-Service:{self.__service_list}-Date:{self.__date}"
     
         
 clinic = Clinic("PetShop") 
