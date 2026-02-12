@@ -22,12 +22,11 @@ class Notification:
 
 
 class Reservation:
-    def __init__(self, reservation_id, customer, pet, service_type, price, time):
+    def __init__(self, reservation_id, customer, pet, service_type, time):
         self.reservation_id = reservation_id
         self.customer = customer
         self.pet = pet
         self.service_type = service_type
-        self.price = price
         self.time = time
         self.status = "confirmed"
 
@@ -295,7 +294,7 @@ class Clinic:
         
         if resource:
             reservation_id = str(uuid.uuid1())[:8]
-            new_reservation = Reservation(reservation_id, customer, pet, service_type, price, time)
+            new_reservation = Reservation(reservation_id, customer, pet, service_type, time)
             self.__reservation.append(new_reservation)
             customer.add_reservation(new_reservation)
             if customer.email:
@@ -308,7 +307,6 @@ class Clinic:
                 "pet_name" : pet.name,
                 "reservation_id": reservation_id,
                 "service" : service_type,
-                "price" : price,
                 "time" : time
             }
         else:
