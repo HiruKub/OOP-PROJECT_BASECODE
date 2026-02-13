@@ -15,11 +15,11 @@ class TreatmentRequest(BaseModel):
     symptom: list[str] = []
     medicine: list[str] = []
     vaccine: list[str] = []
-    amount: float | None = 0.0
+    price: float | None = 0.0
 
 
 class TreatmentService:
-    def __init__(self, record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount):
+    def __init__(self, record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price):
         self.__record_id = record_id
         self.__type_service = type_service
         self.__owner_name = owner_name
@@ -28,12 +28,12 @@ class TreatmentService:
         self.__symptom = symptom
         self.__medicine = medicine
         self.__vaccine = vaccine
-        self.__amount = amount
+        self.__price = price
 
     @staticmethod
-    def create_treatment_service(record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount):
+    def create_treatment_service(record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price):
         treatment_service = TreatmentService(
-            record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount)
+            record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price)
         return treatment_service
 
     def change_dict(self):
@@ -46,7 +46,7 @@ class TreatmentService:
             "Symptom": self.__symptom,
             "Medicine": self.__medicine,
             "Vaccine": self.__vaccine,
-            "Amount": self.__amount
+            "Price": self.__price
         }
 
 
@@ -74,7 +74,7 @@ class Doctor:
         symptom = data.symptom
         medicine = data.medicine
         vaccine = data.vaccine
-        amount = data.amount
+        price = data.price
 
         record_id = str(uuid.uuid4())
 
@@ -87,7 +87,7 @@ class Doctor:
             symptom,
             medicine,
             vaccine,
-            amount
+            price
         )
         return treatment_service
 
