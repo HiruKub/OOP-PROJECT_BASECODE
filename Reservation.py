@@ -22,12 +22,11 @@ class Notification:
 
 
 class Reservation:
-    def __init__(self, reservation_id, customer, pet, service_type, price, time):
+    def __init__(self, reservation_id, customer, pet, service_type, time):
         self.reservation_id = reservation_id
         self.customer = customer
         self.pet = pet
         self.service_type = service_type
-        self.price = price
         self.time = time
         self.status = "confirmed"
 
@@ -98,6 +97,27 @@ class Customer:
     def id(self):
         return self.__customer_id
 
+class Member(Customer):
+    DiscountRate = 0
+    def __init__(self, customer_id, name, phone_number, email, points = 0):
+        super().__init__(customer_id, name, phone_number, email)
+        self.__points = points
+        
+class SilverMember(Member):
+    DiscountRate = 0.05
+    def __init__(self, customer_id, name, phone_number, email, points = 0):
+        super().__init__(customer_id, name, phone_number, email,points)
+
+class GoldMember(Member):
+    DiscountRate = 0.10
+    def __init__(self, customer_id, name, phone_number, email, points=0):
+        super().__init__(customer_id, name, phone_number, email, points)
+
+
+class PlatinumMember(Member):
+    DiscountRate = 0.10
+    def __init__(self, customer_id, name, phone_number, email, points=0):
+        super().__init__(customer_id, name, phone_number, email, points)
 
 class WorkSchedule:
     def __init__(self):
@@ -274,7 +294,7 @@ class Clinic:
         
         if resource:
             reservation_id = str(uuid.uuid1())[:8]
-            new_reservation = Reservation(reservation_id, customer, pet, service_type, price, time)
+            new_reservation = Reservation(reservation_id, customer, pet, service_type, time)
             self.__reservation.append(new_reservation)
             customer.add_reservation(new_reservation)
             if customer.email:
@@ -287,7 +307,6 @@ class Clinic:
                 "pet_name" : pet.name,
                 "reservation_id": reservation_id,
                 "service" : service_type,
-                "price" : price,
                 "time" : time
             }
         else:
