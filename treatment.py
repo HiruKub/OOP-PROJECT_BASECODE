@@ -8,90 +8,102 @@ app = FastAPI()
 
 
 class TreatmentRequest(BaseModel):
+    type_service: str
     owner_name: str
     doctor_id: str
     pet_name: str
-    type_service: str
-    symptom: str
-    amount: float
+    symptom: list[str] = []
+    medicine: list[str] = []
+    vaccine: list[str] = []
+    amount: float | None = 0.0
 
 
-class Customer:
-    def __init__(self, customer_id, customer_name, call, email):
-        self.__customer_id = customer_id
-        self.__customer_name = customer_name
-        self.__call = call
-        self.__email = email
-        self.__pets = []
-        self.__current_reservation = None
-        self.__is_check_in = False
-
-    @property
-    def customer_name(self):
-        return self.__customer_name
-
-    def add_pet(self, pet):
-        self.__pets.append(pet)
-
-    def check_pet(self, pet):
-        for p in self.__pets:
-            if p.name == pet:
-                return p
-        return None
-
-
-class Notification:
-    # def __init__(self, message):
-    #     self.__message = message
-    #     self.__sent_time = datetime.now()
-
-    @staticmethod
-    def create_notification(message):
-        sent_time = datetime.now()
-        return f"Service is done: {message} (at {sent_time})"
-
-
-class MedicalRecord:
-    def __init__(self, record_id, owner_name, doctor_id, pet_name, type_service, symptom, amount):
+class TreatmentService:
+    def __init__(self, record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount):
         self.__record_id = record_id
+        self.__type_service = type_service
         self.__owner_name = owner_name
         self.__doctor_id = doctor_id
         self.__pet_name = pet_name
-        self.__type_service = type_service
         self.__symptom = symptom
+        self.__medicine = medicine
+        self.__vaccine = vaccine
         self.__amount = amount
 
     @staticmethod
-    def create_med_history(record_id, owner_name, doctor_id, pet_name, type_service, symptom, amount, pet_obj):
-        record = MedicalRecord(record_id, owner_name, doctor_id,
-                               pet_name, type_service, symptom, amount)  # พิมพ์ใบเสร็จ
-        pet_obj.add_medical_record(record)  # เก็บลง Pet
-        return record
+    def create_treatment_service(record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount):
+        treatment_service = TreatmentService(
+            record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, amount)
+        return treatment_service
 
     def change_dict(self):
         return {
             "Id": self.__record_id,
+            "Service": self.__type_service,
             "Owner": self.__owner_name,
             "Doctor": self.__doctor_id,
             "Pet": self.__pet_name,
-            "Service": self.__type_service,
             "Symptom": self.__symptom,
+            "Medicine": self.__medicine,
+            "Vaccine": self.__vaccine,
             "Amount": self.__amount
         }
 
 
-class Clinic:
+class Doctor:
+    def __init__(self, doctor_id):
+        self.__doctor_id = doctor_id
 
-    def __init__(self, user):
-        self.__user = user
-        self.__customers = []     # list
-        self.__stocks = []           # list
-        self.__employees = []     # list
-        self.__rooms = []             # list
-        self.__bills = []             # list
-        self.__reservations = []           # list
-        self.__grooming_history = []  # list
-        self.__medical_record = []      # list
+    @property
+    def doctor_id(self):
+        return self.__doctor_id
+
+    def start_treatment_service(self, data: TreatmentRequest, clinic_obj):
+        user = clinic_obj.check_user(data.owner_name)
+        if user == None:
+            return f"User is not found"
+
+        doc = clinic_obj.check_doctor_id(data.doctor_id)
+        if doc == None:
+            return f"Doctor is not found"
+
+        pet = clinic_obj.check_pet_from_customer(user, data.pet_name)
+        if pet == None:
+            return f"Pet is not found"
+
+        symptom = data.symptom
+        medicine = data.medicine
+        vaccine = data.vaccine
+        amount = data.amount
+
+        record_id = str(uuid.uuid4())
+
+        treatment_service = TreatmentService.create_treatment_service(
+            record_id,
+            data.type_service,
+            data.owner_name,
+            data.doctor_id,
+            data.pet_name,
+            symptom,
+            medicine,
+            vaccine,
+            amount
+        )
+        return treatment_service
+
+
+class Clinic:
+    def __init__(self, name):
+        self.__name = name
+        self.__customers = []
+        self.__employees = []
+        self.__medical_service = []
+
+    def add_customer(self, customer_obj):
+        self.__customers.append(customer_obj)
+
+    def add_employee(self, employee_obj):
+        self.__employees.append(employee_obj)
 
     def check_user(self, user):
         for c in self.__customers:
@@ -110,33 +122,25 @@ class Clinic:
             return customer_obj.check_pet(pet)
         return None
 
-    def add_customer(self, customer_obj):
-        self.__customers.append(customer_obj)
-
-    def add_employee(self, employee_obj):
-        self.__employees.append(employee_obj)
-
     def treatment(self, data: TreatmentRequest, doctor_obj):
-        record = doctor_obj.start_treatment(data, self)
-        if isinstance(record, MedicalRecord):
-            self.__medical_record.append(record)
-            noti = Notification.create_notification(
-                f"Treatment {data.pet_name} success")
-            return {"Status": "Service is done",
-                    "Notification": noti}
-        return {"Status": "Error"}
+        treatment_service = doctor_obj.start_treatment_service(data, self)
+        if isinstance(treatment_service, TreatmentService):
+            self.__medical_service.append(treatment_service)
+            return {"Status": "Success", "Data": treatment_service.change_dict()}
+        else:
+            return {"Status": "Error"}
 
     def get_all_treatment_record(self):  # object -> dict
-        all_records = []
-        for med_rec in self.__medical_record:
-            record = med_rec.change_dict()
-            all_records.append(record)
-        return all_records
+        all_med_service = []
+        for med in self.__medical_service:
+            med_service = med.change_dict()
+            all_med_service.append(med_service)
+        return all_med_service
 
     def delete_treatment_record(self, id):
-        for record in self.__medical_record:
-            if str(record.change_dict()["Id"]) == str(id):
-                self.__medical_record.remove(record)
+        for med in self.__medical_service:
+            if str(med.change_dict()["Id"]) == str(id):
+                self.__medical_service.remove(med)
 
                 return {
                     "Data": f"Treatment record with id {id} has been deleted"
@@ -146,82 +150,39 @@ class Clinic:
         }
 
 
-class Doctor:
-    def __init__(self, doctor_id, name, license, proficiency):
-        self.__doctor_id = doctor_id
-        self.__name = name
-        self.__license = license
-        self.__proficiency = proficiency
-        self.__medical_record = []
+class Customer:
+    def __init__(self, customer_name):
+        self.__customer_name = customer_name
+        self.__pets = []
 
     @property
-    def doctor_id(self):
-        return self.__doctor_id
+    def customer_name(self):
+        return self.__customer_name
 
-    def start_treatment(self, data: TreatmentRequest, clinic_obj):
-        user = clinic_obj.check_user(data.owner_name)
-        if user == None:
-            return f"User is not found"
+    def add_pet(self, pet):
+        self.__pets.append(pet)
 
-        doc = clinic_obj.check_doctor_id(data.doctor_id)
-        if doc == None:
-            return f"Doctor is not found"
-
-        pet = clinic_obj.check_pet_from_customer(user, data.pet_name)
-        if pet == None:
-            return f"Pet is not found"
-
-        pet.update_symptom(data.symptom)
-
-        record_id = str(uuid.uuid4())
-        record = MedicalRecord.create_med_history(
-            record_id,
-            data.owner_name,
-            data.doctor_id,
-            data.pet_name,
-            data.type_service,
-            data.symptom,
-            data.amount,
-            pet
-        )
-
-        return record
+    def check_pet(self, pet):
+        for p in self.__pets:
+            if p.pet_name == pet:
+                return p
+        return None
 
 
 class Pet:
-    def __init__(self, name, type, species, weight, customer_id, is_aggressive):
-        self.__name = name
-        self.__type = type
-        self.__species = species
-        self.__weight = weight
-        self.__customer_id = customer_id
-        self.__symptom = ""
-        self.__medical_record = []
+    def __init__(self, pet_name):
+        self.__pet_name = pet_name
 
     @property
-    def name(self):
-        return self.__name
-
-    @property
-    def customer_id(self):
-        return self.__customer_id
-
-    def add_medical_record(self, treatment):     # เก็บ medical record
-        self.__medical_record.append(treatment)
-        return "Add Complete"
-
-    def update_symptom(self, symptom):
-        self.__symptom = symptom
-        return "Update complete"
+    def pet_name(self):
+        return self.__pet_name
 
 
 my_clinic = Clinic("PetShop")
-
-doctor = Doctor("D01", "Sorawit", "123", "Internal Medicine")
+doctor = Doctor("D01")
 my_clinic.add_employee(doctor)
-
-customer = Customer("C01", "A", "1112", "A@gmail.com")
-pet = Pet("B", "Cat", "Bombay", 4.5, "C01", False)
+customer = Customer("Open")
+pet = Pet("Mumu")
 customer.add_pet(pet)
 my_clinic.add_customer(customer)
 
