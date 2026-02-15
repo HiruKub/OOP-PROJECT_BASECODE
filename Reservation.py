@@ -28,15 +28,16 @@ class Reservation:
         self.pet = pet
         self.time = time
         self.status = "confirmed"
-        
+
     @abstractmethod
     def get_details(self):
         pass
 
+
 class GroomingReservation(Reservation):
     def __init__(self, reservation_id, customer, pet, time):
         super().__init__(reservation_id, customer, pet, time)
-        
+
     def get_details(self):
         return f"[Grooming Reservation] for {self.pet.name}"
 
@@ -48,6 +49,7 @@ class MedicalReservation(Reservation):
 
     def get_details(self):
         return f"[Medical Appointment] with Dr.{self.doctor.name} for {self.pet.name}"
+
 
 class HotelReservation(Reservation):
     def __init__(self, reservation_id, customer, pet, time, room, payment):
@@ -62,6 +64,7 @@ class HotelReservation(Reservation):
 
     def get_details(self):
         return f"[Hotel Reservation] in {self.room.get_details()} for {self.pet.name} (Price: {self.price})"
+
 
 class PaymentMethod:
     def __init__(self):
@@ -222,7 +225,7 @@ class Customer:
     @property
     def id(self):
         return self.__customer_id
-    
+
     @property
     def card(self):
         return self.__card
@@ -312,7 +315,6 @@ class Doctor(Employee):
         super().__init__(emp_id, name)
         self.__skill = speciality
 
-    
     pass
 
 
@@ -325,9 +327,7 @@ class Room:
         self._is_full = bool(full)
 
     def get_details(self):
-        return (
-            f"ID: {self._room_id}, Type: {self._room_type}"
-        )
+        return f"ID: {self._room_id}, Type: {self._room_type}"
 
     @property
     def get_price(self):
@@ -396,7 +396,9 @@ class Clinic:
                 return i
         return None
 
-    def create_reservation(self, customer_id, pet_id, service_type, time, payment_method=None):
+    def create_reservation(
+        self, customer_id, pet_id, service_type, time, payment_method=None
+    ):
         resource = None
         price = 0
         customer = self.get_customer_info(customer_id)
@@ -404,7 +406,10 @@ class Clinic:
         payment_obj = None
         if service_type == "Hotel":
             if not payment_method:
-                return {"status": "fail", "message": "Hotel reservation requires a payment method (e.g., 'card' or 'qrcode')"}
+                return {
+                    "status": "fail",
+                    "message": "Hotel reservation requires a payment method (e.g., 'card' or 'qrcode')",
+                }
             if payment_method.lower() == "card":
                 payment_obj = Card()
             elif payment_method.lower() == "qrcode":
@@ -423,17 +428,22 @@ class Clinic:
                         if isinstance(payment_obj, Card):
                             if customer.card:
                                 card_to_use = customer.card[0]
-                            else: 
+                            else:
                                 return None
-                            pay_result = payment_obj.pay(price, payment_method, customer, card_to_use)
-                        
+                            pay_result = payment_obj.pay(
+                                price, payment_method, customer, card_to_use
+                            )
+
                         elif isinstance(payment_obj, QRCode):
                             pay_result = payment_obj.pay(price)
-                        
+
                         if pay_result != "Success":
                             room._is_full = False
                             resource = None
-                            return {"status": "fail", "message": "Payment failed. Room reservation cancelled."}
+                            return {
+                                "status": "fail",
+                                "message": "Payment failed. Room reservation cancelled.",
+                            }
                         break
 
         elif service_type == "Medical":
@@ -460,10 +470,10 @@ class Clinic:
                 new_reservation = MedicalReservation(
                     reservation_id, customer, pet, time, resource
                 )
-            
+
             self.__reservation.append(new_reservation)
             customer.add_reservation(new_reservation)
-            
+
             if customer.email:
                 self.__notification.send_confirmation("EMAIL", reservation_id)
             else:
@@ -474,7 +484,7 @@ class Clinic:
                     "customer_name": customer.name,
                     "detail": new_reservation.get_details(),
                     "time": time,
-                    "payment" : "PAID" 
+                    "payment": "PAID",
                 }
             else:
                 return {
@@ -482,7 +492,7 @@ class Clinic:
                     "customer_name": customer.name,
                     "detail": new_reservation.get_details(),
                     "time": time,
-                    "payment" : "Pay Later" 
+                    "payment": "Pay Later",
                 }
         else:
             return {
@@ -520,7 +530,7 @@ if __name__ == "__main__":
 #   "pet_id": "P01",
 #   "service_type": "Hotel",
 #   "datetime_str": "2023-10-27 10:00",
-#   "payment_method": "qrcode" 
+#   "payment_method": "qrcode"
 # }
 # จอง Medical / Grooming (ไม่มี payment_method)
 # {
