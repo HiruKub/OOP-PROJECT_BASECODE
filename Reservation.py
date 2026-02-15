@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 import uuid
+from abc import abstractmethod
 
 app = FastAPI()
 
@@ -28,7 +29,6 @@ class Reservation:
         self.pet = pet
         self.time = time
         self.status = "confirmed"
-        
 class GroomingReservation(Reservation):
     def __init__(self, reservation_id, customer, pet, time):
         super().__init__(reservation_id, customer, pet, time)
@@ -39,14 +39,86 @@ class MedicalReservation(Reservation):
         self.doctor = doctor
 
 class HotelReservation(Reservation):
-    def __init__(self, reservation_id, customer, pet, time, room):
+    def __init__(self, reservation_id, customer, pet, time, room, payment):
         super().__init__(reservation_id, customer, pet, time)
         self.room = room
         self.price = room.get_price
-        
+        self.payment = payment
     @property
     def get_hotel_reservation_price(self):
         return self.price
+    
+class PaymentMethod:
+    def __init__(self):
+        pass
+    
+    @abstractmethod
+    def calculate_price(self,list_reservation) :
+        pass
+    @abstractmethod
+    def pay(self,amount,payment_type,customer = None,card = None) :
+        pass
+
+class Card (PaymentMethod) :
+    Fee = 0.01
+
+    def __init__(self):
+        self.__payment_type = "card"
+        self.__total_money = 0
+
+    def calculate_price(self,list_reservation) :
+        total = 0
+        for item in list_reservation :
+            total = total + item.get_money
+        return (total*0.01)+total
+    
+    def validate(self,customer,card) :
+        if card != None :
+            if customer.validate_card_for_payment(card) :
+                return True
+        return False
+    
+    def pay(self,amount,payment_type,customer,card = None) :
+        if self.validate(customer,card) :
+            self.__total_money += amount
+            return "Success"
+    
+    @property
+    def get_payment_type (self) :
+        return self.__payment_type
+        
+    
+class QRCode (PaymentMethod) :
+    def __init__(self):
+        self.__payment_type = "qrcode"
+        self.__total_money = 0
+
+    def calculate_price(self,list_reservation) :
+        total = 0
+        for item in list_reservation :
+            total = total + item.get_money
+        return total
+    
+    def pay(self,amount,payment_type,customer=None,card=None) :
+        self.__total_money += amount
+        return "Success"
+    
+    @property
+    def get_payment_type (self) :
+        return self.__payment_type
+
+class Payment :
+    def __init__(self,customer_id,payment_ID,payment_type,price,service_list,date) :
+        self.__customer_id = customer_id
+        self.__payment_type = payment_type
+        self.__price = price
+        self.__service_list = service_list
+        self.__date = date
+        self.__payment_id = payment_ID
+    
+    def create_payment(self) :
+        return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Service:{self.__service_list}-Date:{self.__date}"
+    
 class Pet:
 
     def __init__(
