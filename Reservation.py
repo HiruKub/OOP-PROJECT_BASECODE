@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
@@ -13,6 +13,7 @@ class ReservationRequest(BaseModel):
     pet_id: str
     service_type: str
     datetime_str: str
+    payment_method: Optional[str] = None
 
 
 class Notification:
@@ -509,7 +510,7 @@ clinic_sys = Clinic()
 
 @app.get("/")
 def read_root():
-    return {"Hello": "Kub"}
+    return {"Hello": "KubPom"}
 
 
 @app.post("/Reservation", tags=["Reservation"])
