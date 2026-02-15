@@ -429,14 +429,13 @@ class Clinic:
                         if isinstance(payment_obj, Card):
                             if customer.card:
                                 card_to_use = customer.card[0]
+                                
                             else:
                                 return None
-                            pay_result = payment_obj.pay(
-                                price, payment_method, customer, card_to_use
-                            )
-
+                            pay_result = payment_obj.pay(price, payment_method, customer, card_to_use)
+                        
                         elif isinstance(payment_obj, QRCode):
-                            pay_result = payment_obj.pay(price)
+                            pay_result = payment_obj.pay(price, payment_method)
 
                         if pay_result != "Success":
                             room._is_full = False
@@ -516,7 +515,7 @@ def read_root():
 @app.post("/Reservation", tags=["Reservation"])
 async def make_reservation(req: ReservationRequest):
     result = clinic_sys.create_reservation(
-        req.customer_id, req.pet_id, req.service_type, req.datetime_str
+        req.customer_id, req.pet_id, req.service_type, req.datetime_str, req.payment_method
     )
     return result
 
