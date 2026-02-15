@@ -22,15 +22,31 @@ class Notification:
 
 
 class Reservation:
-    def __init__(self, reservation_id, customer, pet, service_type, time):
+    def __init__(self, reservation_id, customer, pet, time):
         self.reservation_id = reservation_id
         self.customer = customer
         self.pet = pet
-        self.service_type = service_type
         self.time = time
         self.status = "confirmed"
+        
+class GroomingReservation(Reservation):
+    def __init__(self, reservation_id, customer, pet, time):
+        super().__init__(reservation_id, customer, pet, time)
 
+class MedicalReservation(Reservation):
+    def __init__(self, reservation_id, customer, pet, time, doctor):
+        super().__init__(reservation_id, customer, pet, time)
+        self.doctor = doctor
 
+class HotelReservation(Reservation):
+    def __init__(self, reservation_id, customer, pet, time, room):
+        super().__init__(reservation_id, customer, pet, time)
+        self.room = room
+        self.price = room.get_price
+        
+    @property
+    def get_hotel_reservation_price(self):
+        return self.price
 class Pet:
 
     def __init__(
@@ -294,7 +310,7 @@ class Clinic:
         
         if resource:
             reservation_id = str(uuid.uuid1())[:8]
-            new_reservation = Reservation(reservation_id, customer, pet, service_type, time)
+            new_reservation = Reservation(reservation_id, customer, pet, time)
             self.__reservation.append(new_reservation)
             customer.add_reservation(new_reservation)
             if customer.email:
