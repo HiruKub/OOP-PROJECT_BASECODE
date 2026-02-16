@@ -451,9 +451,6 @@ class Clinic:
                 if emp.Type == "Doctor" and emp.get_avaliable_work(time):
                     if emp.update_timeslot(time):
                         resource = emp
-                        price = 1500
-                        if pet.aggressive:
-                            price += price * 0.3
                         break
 
         if resource:
