@@ -25,15 +25,114 @@ class Reservation :
     @property
     def get_service(self) :
         return self.__service
+    
+class Service :
+    def __init__(self,pet_name,owner_name,date) :
+        self.__pet_name = pet_name
+        self.__owner = owner_name
+        self.__date = date 
+        self.__service = []
+        self.__price = 0
+
+    @property
+    def get_date(self) :
+        return self.__date
+
+    def append_service(self,service) :
+        self.__service.append(service)
+
+    def calculate_total_price(self) :
+        total = 0
+        for service in self.__service:
+            total += service.price
+        self.__price = total
+        return self.__price
+    
+    def get_service_list (self) :
+        service_list = []
+        for service in self.__service :
+            type = service.type
+            service_list.append(type)
+        return service_list
+
+class GroomingService :
+    def __init__(self,type,price) :
+        self.__type = type
+        self.__price = price
+
+    @property
+    def price(self) :
+        return self.__price
+    
+    @property
+    def type(self) :
+        return self.__type
+
+class BoardingService :
+    def __init__(self,type,room,day,price) :
+        self.__type = type
+        self.__room = room
+        self.__day = day
+        self.__price = price
+
+    @property
+    def price(self) :
+        return self.__price
+    
+    @property
+    def type(self) :
+        return self.__type
+
+class MedicalService :
+    def __init__(self,type,doctor_id,price) :
+        self.__type = type
+        self.__doctor_id = doctor_id
+        self.__price = price
+
+    @property
+    def price(self) :
+        return self.__price
+    
+    @property
+    def type(self) :
+        return self.__type
+    
+class Pet :
+    def __init__(self,name,customer_id) :
+        self.__name = name
+        self.__customer_id = customer_id
+        self.__service = []
+
+    def search_service(self,date) :
+        for service in self.__service :
+            if service.get_date.date() == date.date() :
+                return service
+        return None
+    
+    def append_big_service (self,service) :
+        self.__service.append(service)
+    
+    @property
+    def name(self) :
+        return self.__name
+        
         
 class Customer :
     def __init__(self,name,id):
         self.__name =name
         self.__customer_id = id
+        self.__pet_list = []
         self.__card = []
         self.__reservation = []
         self.__pick_date = []
         self.__payment_list = []
+
+    def add_pet(self,pet) :
+        self.__pet_list.append(pet)
+
+    @property
+    def get_pet(self) :
+        return self.__pet_list
 
     @property
     def get_id(self):
@@ -144,7 +243,59 @@ class Clinic :
     def __init__(self,name) :
         self.__name = name
         self.__list_customer = []
+        self.__list_pet = []
         self.__payment_method = []
+    
+    def add_pet (self,pet) :
+        self.__list_pet.append(pet)
+    
+    def search_pet_by_name (self,name) :
+        for pet in self.__list_pet :
+            if pet.name == name :
+                return pet
+        return "Not found"
+
+    def record_service(self,pet_name,customer_name,date,type,price,room=None,doctor_id=None) :
+        pet = self.search_pet_by_name(pet_name)
+        if pet == "Not found" :
+            return "Not found"
+        else :
+            big_service = pet.search_service(date)
+            create =False
+            if big_service == None :
+                create = True
+                big_service = self.create_service(pet_name,customer_name,date)
+
+            if type == "grooming" :
+                grooming = self.create_grooming_service(price)
+                big_service.append_service(grooming)
+
+            elif type == "boarding" :
+                boarding = self.create_boarding_service(room,date,price)
+                big_service.append_service(boarding)
+
+            elif type == "treatment" :
+                treatment = self.create_treatment_service(doctor_id,price)
+                big_service.append_service(treatment)
+        if(create) :
+            pet.append_big_service(big_service)
+
+    def create_service (self,pet_name,customer_name,date) :
+        # service = Service("corgi","bam",datetime(11/11/2025))
+        service = Service(pet_name,customer_name,date)
+        return service
+
+    def create_grooming_service(self,price) :
+        grooming = GroomingService("grooming",price)
+        return grooming
+
+    def create_boarding_service(self,room,day,price) :
+        boarding = BoardingService("boarding",room,day,price)
+        return boarding
+    
+    def create_treatment_service (self,doctor_id,price) :
+        treatment = MedicalService("treatment",doctor_id,price)
+        return treatment
 
     def add_customer(self,customer) :
         self.__list_customer.append(customer)
@@ -158,9 +309,9 @@ class Clinic :
                 return customer
         return "Not Found"
     
-    def create_payment(self,customer_id,payment_type,price,service_list,today,point=0) :
+    def create_payment(self,customer_id,method,price,service_list,today,point=0) :
         payment_ID = self.generate_ID()
-        payment = Payment(customer_id,payment_ID,payment_type,price,service_list,today,point)
+        payment = Payment(customer_id,payment_ID,method,price,service_list,today,point)
         return payment.create_payment()
     
     def generate_ID(self) :
@@ -243,46 +394,59 @@ class Clinic :
         
         if (customer != "Not Found") :
             today = datetime.today() # 2026-02-08 21:30:15.123456
-            list_reservation = customer.search_reservation(today) 
+            # list_reservation = customer.search_reservation(today) 
 
-            if len(list_reservation) == 0 :
-                return "Not have"
-            else : 
-                method = self.check_payment_type(payment_type)
-                if method == None : 
-                    return "Payment type not supported"
-                price = method.calculate_price(list_reservation)
-                discount = self.calculate_discount(customer_id,price)
+            # if len(list_reservation) == 0 :
+            #     return "Not have"
+            # else : 
+            pet_list = customer.get_pet 
+           
+            method = self.check_payment_type(payment_type)
+            if method == None : 
+                return "Payment type not supported"
+            # price = method.calculate_price(list_reservation)
 
-                cp_discount = 0
-                if use_cp :
-                    if not self.check_member(customer):
-                        return "Not Member"
+            price = method.calculate_price(pet_list,today)
+
+            discount = self.calculate_discount(customer_id,price)
+            cp_discount = 0
+            if use_cp :
+                if not self.check_member(customer):
+                    return "Not Member"
                     
-                    cp_discount = self.use_coupon(customer)
-                    if cp_discount == "Not Have Coupon" :
-                        return "Not Have Coupon"
+                cp_discount = self.use_coupon(customer)
+                if cp_discount == "Not Have Coupon" :
+                    return "Not Have Coupon"
 
-                new_price = price - discount - cp_discount
+            new_price = price - discount - cp_discount
 
-                if new_price > 0 :
-                    pay_result = method.pay(new_price,payment_type,customer,card)
-                    if( pay_result == "Success" ):
-                        point = self.add_point(customer,price)
-                        service_list = []
-                        for service in list_reservation :
-                            service_list.append(service.get_service)
-                        payment = self.create_payment(customer_id,payment_type,new_price,service_list,today,point)
+            if new_price > 0 :
+                
+                pay_result = method.pay(new_price,payment_type,customer,card)
+                if( pay_result == "Success" ):
+                    point = self.add_point(customer,price)
+                    # service_list = []
+                    # for service in list_reservation :
+                    #     service_list.append(service.get_service)
+                    list_pet_and_service = []
+                    for pet in pet_list :
+                        service = pet.search_service(today)
+                        if service != None :
+                            service_list = service.get_service_list()
+                            list_pet_and_service.append([pet.name, service_list])
+
+                    payment = self.create_payment(customer_id,method,new_price,list_pet_and_service,today,point)
                         
-                        if(customer.add_payment(payment) == "Success" ):
-                            return payment
-                        else :
-                            return "cannot add payment"
-                    
+                    if(customer.add_payment(payment) == "Success" ):
+                        return payment
                     else :
-                        return "cannot pay"
+                        return "cannot add payment"
+                    
                 else :
-                    return "Not have order to pay"
+                    return "cannot pay"
+                
+            else :
+                return "Not have order to pay" 
         else :
             return "Not Found Customer"                
 
@@ -302,11 +466,14 @@ class Card (PaymentMethod) :
         self.__payment_type = "card"
         self.__total_money = 0
 
-    def calculate_price(self,list_reservation) :
-        total = 0
-        for item in list_reservation :
-            total = total + item.get_money
-        return (total*0.01)+total
+    def calculate_price(self,pet_list,today) :
+        price = 0
+        for pet in pet_list :
+            service = pet.search_service(today)
+            if service != None :
+                sub_price = service.calculate_total_price()
+                price += sub_price
+        return (price*0.01)+price
     
     def validate(self,customer,card) :
         if card != None :
@@ -330,11 +497,14 @@ class QRCode (PaymentMethod) :
         self.__payment_type = "qrcode"
         self.__total_money = 0
 
-    def calculate_price(self,list_reservation) :
-        total = 0
-        for item in list_reservation :
-            total = total + item.get_money
-        return total
+    def calculate_price(self,pet_list,today) :
+        price = 0
+        for pet in pet_list :
+            service = pet.search_service(today)
+            if service != None :
+                sub_price = service.calculate_total_price()
+                price += sub_price
+        return price
     
     def pay(self,amount,payment_type,customer=None,card=None) :
         self.__total_money += amount
@@ -345,14 +515,21 @@ class QRCode (PaymentMethod) :
         return self.__payment_type
 
 class Payment :
-    def __init__(self,customer_id,payment_ID,payment_type,price,service_list,date,point) :
+    def __init__(self,customer_id,payment_ID,method,price,service_list,date,point) :
         self.__customer_id = customer_id
-        self.__payment_type = payment_type
+        self.__payment_type = method.get_payment_type
         self.__price = price
         self.__service_list = service_list
         self.__date = date
         self.__payment_id = payment_ID
         self.__point = point
+        self.__payment_method = []
+
+    # def create_payment_method(self) :
+    #     CardPayment = Card()
+    #     QRCodePayment = QRCode()
+    #     self.__payment_method.append(CardPayment)
+    #     self.__payment_method.append(QRCodePayment)
     
     def create_payment(self) :
         return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Service:{self.__service_list}-Date:{self.__date}-Point:{self.__point}"
@@ -362,17 +539,33 @@ clinic = Clinic("PetShop")
 Bam = Customer("bam","123445")
 Bam.add_card("Card123")
 clinic.add_customer(Bam)
+Golden = Pet("golden","123445")
+clinic.add_pet(Golden)
+Bam.add_pet(Golden)
 
 Peem = GoldMember("peem","123456", datetime(2025, 11, 11))
 Peem.add_card("Card555")
 clinic.add_customer(Peem)
+Corgi = Pet("corgi","123456")
+clinic.add_pet(Corgi)
+Peem.add_pet(Corgi)
+Husky = Pet("husky","123456")
+clinic.add_pet(Husky)
+Peem.add_pet(Husky)
 
 today = datetime.now()
-reservation1 = Reservation("rx122",Bam,"Bath",4500,today)
-reservation = Reservation("rx122",Bam,"Treatment",5500,today)
+# reservation1 = Reservation("rx122",Bam,"Bath",4500,today)
+# reservation = Reservation("rx122",Bam,"Treatment",5500,today)
 
-reservation2 = Reservation("ry123",Peem,"Treatment",6000,today)
-reservation3 = Reservation("ry123",Peem,"Boarding",6000,today)
+# reservation2 = Reservation("ry123",Peem,"Treatment",6000,today)
+# reservation3 = Reservation("ry123",Peem,"Boarding",6000,today)
+
+clinic.record_service("golden","bam",today,"grooming",2000)
+clinic.record_service("golden","bam",today,"boarding",5000,"room1")
+
+clinic.record_service("corgi","peem",today,"treatment",5500,doctor_id="DOCTOR123")
+clinic.record_service("husky","peem",today,"grooming",2000)
+clinic.record_service("husky","peem",today,"boarding",5000,"room1")
 
 CardPayment = Card()
 QRCodePayment = QRCode()
@@ -380,6 +573,7 @@ clinic.add_payment_method(CardPayment)
 clinic.add_payment_method(QRCodePayment)
 
 clinic.add_point(Peem,12000)
+clinic.get_coupon("123456")
 clinic.get_coupon("123456")
 
 @app.get("/")
