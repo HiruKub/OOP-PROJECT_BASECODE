@@ -90,8 +90,12 @@ class Doctor:
             vaccine,
             price
         )
-        self.__treatment_service.append(treatment_service) # keep at Doctor
-        pet.search_lastest_service().add_treatment_service(treatment_service)
+        self.__treatment_service.append(treatment_service)  # keep at Doctor
+
+        add_status = pet.search_lastest_service().add_treatment_service(treatment_service)
+
+        print(f"Status from pet: {add_status}")
+
         return treatment_service
 
 
@@ -127,25 +131,26 @@ class Clinic:
 
     def treatment(self, data: TreatmentRequest, doctor_obj):
         treatment_service = doctor_obj.start_treatment_service(data, self)
-        
+
         if isinstance(treatment_service, TreatmentService):
-            self.__treatment_service.append(treatment_service)  # keep at Clinic
-            
+            self.__treatment_service.append(
+                treatment_service)  # keep at Clinic
+
             return {"Status": "Success", "Data": treatment_service.change_dict()}
         else:
-            return {"Status": "Error"}
+            return {"Status": "Error", "Message": treatment_service}
 
     def get_all_treatment_record(self):  # object -> dict
         all_med_service = []
-        for med in self.__medical_service:
+        for med in self.__treatment_service:
             med_service = med.change_dict()
             all_med_service.append(med_service)
         return all_med_service
 
     def delete_treatment_record(self, id):
-        for med in self.__medical_service:
+        for med in self.__treatment_service:
             if str(med.change_dict()["Id"]) == str(id):
-                self.__medical_service.remove(med)
+                self.__treatment_service.remove(med)
 
                 return {
                     "Data": f"Treatment record with id {id} has been deleted"
@@ -154,13 +159,15 @@ class Clinic:
             "Data": f"This Treatment record with id {id} is not found!"
         }
 
+
 class Service:
     def __init__(self):
         self.__sub_service = []
-        
+
     def add_treatment_service(self, treatment_service):
         self.__sub_service.append(treatment_service)
-        return True
+        return "Add complete"
+
 
 class Customer:
     def __init__(self, customer_id):
@@ -189,19 +196,36 @@ class Pet:
     @property
     def pet_name(self):
         return self.__pet_name
-    
+
+    def create_new_service(self):
+        new_service = Service()
+        self.__services.append(new_service)
+
     def search_lastest_service(self):
+        if len(self.__services) == 0:
+            self.create_new_service()
+
         return self.__services[-1]
 
 
-
 my_clinic = Clinic("PetShop")
-doctor = Doctor("D01")
-my_clinic.add_employee(doctor)
-customer = Customer("C01")
-pet = Pet("Mumu")
-customer.add_pet(pet)
-my_clinic.add_customer(customer)
+
+doc1 = Doctor("D01")
+doc2 = Doctor("D02")
+my_clinic.add_employee(doc1)
+my_clinic.add_employee(doc2)
+
+customer1 = Customer("C01")
+pet1 = Pet("Mumu")
+pet2 = Pet("Mala")
+customer1.add_pet(pet1)
+customer1.add_pet(pet2)
+my_clinic.add_customer(customer1)
+
+customer2 = Customer("C02")
+pet3 = Pet("Mimi")
+customer2.add_pet(pet3)
+my_clinic.add_customer(customer2)
 
 
 @app.get("/", tags=['root'])
@@ -213,14 +237,19 @@ async def root() -> dict:
 async def add_treatment(data: TreatmentRequest):
     doctor_obj = my_clinic.check_doctor_id(data.doctor_id)
     if not doctor_obj:
-        return "Error"
+        return "Doctor is not found"
 
     treatment = my_clinic.treatment(data, doctor_obj)
 
-    return {
-        "Messege": "A treatment record has been added successfully!",
-        "Data": treatment
-    }
+    if treatment["Status"] == "Success":
+        return {
+            "Message": "A treatment record has been added successfully!",
+            "Data": treatment["Data"]
+        }
+    else:
+        return {
+            "Message": treatment["Message"]
+        }
 
 
 @app.get("/treatment", tags=["Clinic Operation"])
