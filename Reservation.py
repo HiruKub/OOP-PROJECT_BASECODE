@@ -417,6 +417,7 @@ class Clinic:
                 payment_obj = QRCode()
             else:
                 return {"status": "fail", "message": "Invalid payment method"}
+        
         if service_type == "Grooming":
             resource = "Grooming"
 

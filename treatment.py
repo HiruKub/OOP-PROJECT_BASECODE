@@ -9,7 +9,7 @@ app = FastAPI()
 
 class TreatmentRequest(BaseModel):
     type_service: str
-    owner_name: str
+    owner_id: str
     doctor_id: str
     pet_name: str
     symptom: list[str] = []
@@ -19,10 +19,10 @@ class TreatmentRequest(BaseModel):
 
 
 class TreatmentService:
-    def __init__(self, record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price):
+    def __init__(self, record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price):
         self.__record_id = record_id
         self.__type_service = type_service
-        self.__owner_name = owner_name
+        self.__owner_id = owner_id
         self.__doctor_id = doctor_id
         self.__pet_name = pet_name
         self.__symptom = symptom
@@ -31,16 +31,16 @@ class TreatmentService:
         self.__price = price
 
     @staticmethod
-    def create_treatment_service(record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price):
+    def create_treatment_service(record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price):
         treatment_service = TreatmentService(
-            record_id, type_service, owner_name, doctor_id, pet_name, symptom, medicine, vaccine, price)
+            record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price)
         return treatment_service
 
     def change_dict(self):
         return {
             "Id": self.__record_id,
             "Service": self.__type_service,
-            "Owner": self.__owner_name,
+            "Owner ID": self.__owner_id,
             "Doctor": self.__doctor_id,
             "Pet": self.__pet_name,
             "Symptom": self.__symptom,
@@ -53,13 +53,14 @@ class TreatmentService:
 class Doctor:
     def __init__(self, doctor_id):
         self.__doctor_id = doctor_id
+        self.__treatment_service = []
 
     @property
     def doctor_id(self):
         return self.__doctor_id
 
     def start_treatment_service(self, data: TreatmentRequest, clinic_obj):
-        user = clinic_obj.check_user(data.owner_name)
+        user = clinic_obj.check_user(data.owner_id)
         if user == None:
             return f"User is not found"
 
@@ -81,7 +82,7 @@ class Doctor:
         treatment_service = TreatmentService.create_treatment_service(
             record_id,
             data.type_service,
-            data.owner_name,
+            data.owner_id,
             data.doctor_id,
             data.pet_name,
             symptom,
@@ -89,6 +90,8 @@ class Doctor:
             vaccine,
             price
         )
+        self.__treatment_service.append(treatment_service) # keep at Doctor
+        pet.search_lastest_service().add_treatment_service(treatment_service)
         return treatment_service
 
 
@@ -97,7 +100,7 @@ class Clinic:
         self.__name = name
         self.__customers = []
         self.__employees = []
-        self.__medical_service = []
+        self.__treatment_service = []
 
     def add_customer(self, customer_obj):
         self.__customers.append(customer_obj)
@@ -107,7 +110,7 @@ class Clinic:
 
     def check_user(self, user):
         for c in self.__customers:
-            if c.customer_name == user:
+            if c.customer_id == user:
                 return c
         return None
 
@@ -124,8 +127,10 @@ class Clinic:
 
     def treatment(self, data: TreatmentRequest, doctor_obj):
         treatment_service = doctor_obj.start_treatment_service(data, self)
+        
         if isinstance(treatment_service, TreatmentService):
-            self.__medical_service.append(treatment_service)
+            self.__treatment_service.append(treatment_service)  # keep at Clinic
+            
             return {"Status": "Success", "Data": treatment_service.change_dict()}
         else:
             return {"Status": "Error"}
@@ -149,15 +154,22 @@ class Clinic:
             "Data": f"This Treatment record with id {id} is not found!"
         }
 
+class Service:
+    def __init__(self):
+        self.__sub_service = []
+        
+    def add_treatment_service(self, treatment_service):
+        self.__sub_service.append(treatment_service)
+        return True
 
 class Customer:
-    def __init__(self, customer_name):
-        self.__customer_name = customer_name
+    def __init__(self, customer_id):
+        self.__customer_id = customer_id
         self.__pets = []
 
     @property
-    def customer_name(self):
-        return self.__customer_name
+    def customer_id(self):
+        return self.__customer_id
 
     def add_pet(self, pet):
         self.__pets.append(pet)
@@ -172,16 +184,21 @@ class Customer:
 class Pet:
     def __init__(self, pet_name):
         self.__pet_name = pet_name
+        self.__services = []
 
     @property
     def pet_name(self):
         return self.__pet_name
+    
+    def search_lastest_service(self):
+        return self.__services[-1]
+
 
 
 my_clinic = Clinic("PetShop")
 doctor = Doctor("D01")
 my_clinic.add_employee(doctor)
-customer = Customer("Open")
+customer = Customer("C01")
 pet = Pet("Mumu")
 customer.add_pet(pet)
 my_clinic.add_customer(customer)
