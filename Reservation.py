@@ -14,6 +14,7 @@ class ReservationRequest(BaseModel):
     service_type: str
     datetime_str: str
     payment_method: Optional[str] = None
+    room_type: Optional[str] = None
 
 
 class Notification:
@@ -349,14 +350,14 @@ class PrivateRoom(Room):
     price_per_day = 1500
 
     def __init__(self, room_id):
-        super().__init__(room_id, "PrivateRoom")
+        super().__init__(room_id, "privateroom")
 
 
 class ShareRoom(Room):
     price_per_day = 500
 
     def __init__(self, room_id):
-        super().__init__(room_id, "ShareRoom")
+        super().__init__(room_id, "shareroom")
 
 
 class Clinic:
@@ -398,18 +399,34 @@ class Clinic:
         return None
 
     def create_reservation(
-        self, customer_id, pet_id, service_type, time, payment_method=None
+        self,
+        customer_id,
+        pet_id,
+        service_type,
+        time,
+        payment_method=None,
+        room_type=None,
     ):
         resource = None
         price = 0
         customer = self.get_customer_info(customer_id)
         pet = self.get_pet_info(pet_id)
         payment_obj = None
-        if service_type == "Hotel":
+
+        if service_type == "Grooming":
+            resource = "Grooming"
+
+        elif service_type == "Hotel":
             if not payment_method:
                 return {
                     "status": "fail",
                     "message": "Hotel reservation requires a payment method (e.g., 'card' or 'qrcode')",
+                }
+
+            if not room_type:
+                return {
+                    "status": "fail",
+                    "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
                 }
             if payment_method.lower() == "card":
                 payment_obj = Card()
@@ -417,24 +434,22 @@ class Clinic:
                 payment_obj = QRCode()
             else:
                 return {"status": "fail", "message": "Invalid payment method"}
-        
-        if service_type == "Grooming":
-            resource = "Grooming"
 
-        elif service_type == "Hotel":
             for room in self.__rooms:
-                if not room.is_full:
+                if not room.is_full and room_type.lower() == room.room_type:
                     if room.book_room():
                         resource = room
                         price = room.get_price
                         if isinstance(payment_obj, Card):
                             if customer.card:
                                 card_to_use = customer.card[0]
-                                
+
                             else:
                                 return None
-                            pay_result = payment_obj.pay(price, payment_method, customer, card_to_use)
-                        
+                            pay_result = payment_obj.pay(
+                                price, payment_method, customer, card_to_use
+                            )
+
                         elif isinstance(payment_obj, QRCode):
                             pay_result = payment_obj.pay(price, payment_method)
 
@@ -462,7 +477,7 @@ class Clinic:
                 )
             elif service_type == "Hotel":
                 new_reservation = HotelReservation(
-                    reservation_id, customer, pet, time, resource, payment_method
+                    reservation_id, customer, pet, time, resource, payment_method, room_type
                 )
             elif service_type == "Medical":
                 new_reservation = MedicalReservation(
@@ -513,7 +528,12 @@ def read_root():
 @app.post("/Reservation", tags=["Reservation"])
 async def make_reservation(req: ReservationRequest):
     result = clinic_sys.create_reservation(
-        req.customer_id, req.pet_id, req.service_type, req.datetime_str, req.payment_method
+        req.customer_id,
+        req.pet_id,
+        req.service_type,
+        req.datetime_str,
+        req.payment_method,
+        req.room_type,
     )
     return result
 
