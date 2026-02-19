@@ -1,0 +1,12 @@
+sequenceDiagram
+        actor UI
+        participant Clinic
+        
+        UI ->>+ Clinic : create_customer(name,call,email,card = None)
+        Clinic ->> Clinic : generate_ID()
+        create participant Customer
+        Clinic ->>+ Customer : <<create>>(ID,name,call,email,card)
+        Customer -->>- Clinic : return success
+        Clinic ->> Clinic : add_customer(Customer)
+        Clinic -->>- UI : return success
+        
