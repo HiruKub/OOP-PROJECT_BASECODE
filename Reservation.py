@@ -262,7 +262,7 @@ class PlatinumMember(Member):
         super().__init__(customer_id, name, phone_number, email, points)
 
 
-class WorkSchedule:
+class TimeSchedule:
     def __init__(self):
         # ["2023-10-27 10:00", "2023-10-27 11:00"]
         self.__busy_slots = []
@@ -288,7 +288,7 @@ class Employee:
     def __init__(self, emp_id, name):
         self.__employee_id = emp_id
         self.__name = name
-        self.__workschedule = WorkSchedule()
+        self.__workschedule = TimeSchedule()
 
     @property
     def name(self):
