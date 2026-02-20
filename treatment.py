@@ -99,7 +99,7 @@ class Doctor:
             new_big_service.add_sub_service(
                 medical_service)  # เพิ่ม sub service ลง
 
-            pet.create_new_service(new_big_service)
+            pet.add_new_big_service(new_big_service)
 
         return medical_service
 
@@ -218,7 +218,7 @@ class Pet:
         return None
 
     # สร้างกล่องใหม่ที่ pet หมอคนสั่งการให้ pet(เจ้าของข้อมูล)ทำ หมอไปยุ่งไม่ได้
-    def create_new_service(self, new_service):
+    def add_new_big_service(self, new_service):
         self.__services.append(new_service)
 
 
