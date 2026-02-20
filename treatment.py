@@ -18,31 +18,31 @@ class TreatmentRequest(BaseModel):
     price: float | None = 0.0
 
 
-class TreatmentService:
-    def __init__(self, record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price):
+class MedicalService:
+    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
         self.__record_id = record_id
         self.__type_service = type_service
-        self.__owner_id = owner_id
-        self.__doctor_id = doctor_id
-        self.__pet_name = pet_name
+        self.__owner_obj = owner_obj
+        self.__doctor_obj = doctor_obj
+        self.__pet_obj = pet_obj
         self.__symptom = symptom
         self.__medicine = medicine
         self.__vaccine = vaccine
         self.__price = price
 
     @staticmethod
-    def create_treatment_service(record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price):
-        treatment_service = TreatmentService(
-            record_id, type_service, owner_id, doctor_id, pet_name, symptom, medicine, vaccine, price)
-        return treatment_service
+    def create_medical_service(record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
+        medical_service = MedicalService(
+            record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price)
+        return medical_service
 
     def change_dict(self):
         return {
             "Id": self.__record_id,
             "Service": self.__type_service,
-            "Owner ID": self.__owner_id,
-            "Doctor": self.__doctor_id,
-            "Pet": self.__pet_name,
+            "Owner ID": self.__owner_obj.customer_id,
+            "Doctor": self.__doctor_obj.doctor_id,
+            "Pet": self.__pet_obj.pet_name,
             "Symptom": self.__symptom,
             "Medicine": self.__medicine,
             "Vaccine": self.__vaccine,
@@ -53,22 +53,18 @@ class TreatmentService:
 class Doctor:
     def __init__(self, doctor_id):
         self.__doctor_id = doctor_id
-        self.__treatment_service = []
+        self.__medical_service = []
 
     @property
     def doctor_id(self):
         return self.__doctor_id
 
-    def start_treatment_service(self, data: TreatmentRequest, clinic_obj):
-        user = clinic_obj.check_user(data.owner_id)
-        if user == None:
+    def start_medical_service(self, data: TreatmentRequest, clinic_obj):
+        customer = clinic_obj.check_user(data.owner_id)
+        if customer == None:
             return f"User is not found"
 
-        doc = clinic_obj.check_doctor_id(data.doctor_id)
-        if doc == None:
-            return f"Doctor is not found"
-
-        pet = clinic_obj.check_pet_from_customer(user, data.pet_name)
+        pet = clinic_obj.check_pet_from_customer(customer, data.pet_name)
         if pet == None:
             return f"Pet is not found"
 
@@ -79,24 +75,33 @@ class Doctor:
 
         record_id = str(uuid.uuid4())
 
-        treatment_service = TreatmentService.create_treatment_service(
+        medical_service = MedicalService.create_medical_service(
             record_id,
             data.type_service,
-            data.owner_id,
-            data.doctor_id,
-            data.pet_name,
+            customer,   # customer object
+            self,       # doctor object
+            pet,        # pet object
             symptom,
             medicine,
             vaccine,
             price
         )
-        self.__treatment_service.append(treatment_service)  # keep at Doctor
+        self.__medical_service.append(medical_service)  # keep at Doctor
 
-        add_status = pet.search_lastest_service().add_treatment_service(treatment_service)
+        unpaid_service = pet.search_unpaid_service()
 
-        print(f"Status from pet: {add_status}")
+        # check unpaid service
+        if unpaid_service:
+            unpaid_service.add_sub_service(medical_service)
 
-        return treatment_service
+        else:
+            new_big_service = Service()  # สร้างกล่องใหญ่
+            new_big_service.add_sub_service(
+                medical_service)  # เพิ่ม sub service ลง
+
+            pet.create_new_service(new_big_service)
+
+        return medical_service
 
 
 class Clinic:
@@ -104,7 +109,7 @@ class Clinic:
         self.__name = name
         self.__customers = []
         self.__employees = []
-        self.__treatment_service = []
+        self.__medical_service = []
 
     def add_customer(self, customer_obj):
         self.__customers.append(customer_obj)
@@ -129,43 +134,52 @@ class Clinic:
             return customer_obj.check_pet(pet)
         return None
 
-    def treatment(self, data: TreatmentRequest, doctor_obj):
-        treatment_service = doctor_obj.start_treatment_service(data, self)
+    def medical_treatment(self, data: TreatmentRequest, doctor_obj):
 
-        if isinstance(treatment_service, TreatmentService):
-            self.__treatment_service.append(
-                treatment_service)  # keep at Clinic
+        medical_service = doctor_obj.start_medical_service(data, self)
 
-            return {"Status": "Success", "Data": treatment_service.change_dict()}
+        if isinstance(medical_service, MedicalService):
+            self.__medical_service.append(
+                medical_service)  # keep at Clinic
+
+            return {"Status": "Success", "Data": medical_service.change_dict()}
         else:
-            return {"Status": "Error", "Message": treatment_service}
+            return {"Status": "Error", "Message": medical_service}
 
-    def get_all_treatment_record(self):  # object -> dict
+    def get_all_medical_record(self):  # object -> dict
         all_med_service = []
-        for med in self.__treatment_service:
+        for med in self.__medical_service:
             med_service = med.change_dict()
             all_med_service.append(med_service)
         return all_med_service
 
-    def delete_treatment_record(self, id):
-        for med in self.__treatment_service:
+    def delete_medical_record(self, id):
+        for med in self.__medical_service:
             if str(med.change_dict()["Id"]) == str(id):
-                self.__treatment_service.remove(med)
+                self.__medical_service.remove(med)
 
                 return {
-                    "Data": f"Treatment record with id {id} has been deleted"
+                    "Data": f"Medical record with id {id} has been deleted"
                 }
         return {
-            "Data": f"This Treatment record with id {id} is not found!"
+            "Data": f"This Medical record with id {id} is not found!"
         }
 
 
 class Service:
     def __init__(self):
         self.__sub_service = []
+        self.__is_paid = False
 
-    def add_treatment_service(self, treatment_service):
-        self.__sub_service.append(treatment_service)
+    @property
+    def is_paid(self):
+        return self.__is_paid
+
+    def mark_is_paid(self):
+        self.__is_paid = True
+
+    def add_sub_service(self, sub_service):
+        self.__sub_service.append(sub_service)
         return "Add complete"
 
 
@@ -197,15 +211,15 @@ class Pet:
     def pet_name(self):
         return self.__pet_name
 
-    def create_new_service(self):
-        new_service = Service()
+    def search_unpaid_service(self):
+        for service in self.__services:
+            if service.is_paid == False:
+                return service
+        return None
+
+    # สร้างกล่องใหม่ที่ pet หมอคนสั่งการให้ pet(เจ้าของข้อมูล)ทำ หมอไปยุ่งไม่ได้
+    def create_new_service(self, new_service):
         self.__services.append(new_service)
-
-    def search_lastest_service(self):
-        if len(self.__services) == 0:
-            self.create_new_service()
-
-        return self.__services[-1]
 
 
 my_clinic = Clinic("PetShop")
@@ -233,36 +247,36 @@ async def root() -> dict:
     return {"Pet Shop": "Online"}
 
 
-@app.post("/treatment", tags=["Clinic Operation"])
-async def add_treatment(data: TreatmentRequest):
+@app.post("/medical_treatment", tags=["Clinic Operation"])
+async def add_medical_treatment(data: TreatmentRequest):
     doctor_obj = my_clinic.check_doctor_id(data.doctor_id)
     if not doctor_obj:
         return "Doctor is not found"
 
-    treatment = my_clinic.treatment(data, doctor_obj)
+    medical_treatment = my_clinic.medical_treatment(data, doctor_obj)
 
-    if treatment["Status"] == "Success":
+    if medical_treatment["Status"] == "Success":
         return {
-            "Message": "A treatment record has been added successfully!",
-            "Data": treatment["Data"]
+            "Message": "A medical treatment record has been added successfully!",
+            "Data": medical_treatment["Data"]
         }
     else:
         return {
-            "Message": treatment["Message"]
+            "Message": medical_treatment["Message"]
         }
 
 
-@app.get("/treatment", tags=["Clinic Operation"])
-async def get_treatments():
+@app.get("/medical_treatment", tags=["Clinic Operation"])
+async def get_medical_treatments():
     return {
-        "Data": my_clinic.get_all_treatment_record()
+        "Data": my_clinic.get_all_medical_record()
     }
 
 
 @app.delete("/treatment", tags=["Clinic Operation"])
-async def delete_treatment(id: str):
-    treatment = my_clinic.delete_treatment_record(id)
-    return treatment
+async def delete_medical_treatment(id: str):
+    medical_treatment = my_clinic.delete_medical_record(id)
+    return medical_treatment
 
 if __name__ == "__main__":
     uvicorn.run("treatment:app", host="127.0.0.1",
