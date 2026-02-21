@@ -1,0 +1,48 @@
+
+---
+config:
+  look: neo
+  theme: redux-dark-color
+---
+sequenceDiagram
+    actor Customer
+    participant Clinic
+    participant CustomerClass
+    participant Pet
+    participant Reservation
+    participant Notification
+    autonumber
+    
+    Customer->>+Clinic: create_reservation(customer_id, pet_id, "Grooming", time)
+    
+    loop search customer
+        Clinic->>+CustomerClass: get_customer_info(customer_id)
+        CustomerClass-->>-Clinic: return Customer
+    end
+    
+    loop search pet
+        Clinic ->>+ Pet: get_pet_info(pet_id)
+        Pet -->>- Clinic: return Pet
+    end
+    
+    Clinic->>Clinic: resource = "Grooming"
+
+    alt resource != None
+        Clinic->>Reservation: create GroomingReservation()
+        Clinic->>Clinic: __reservation.append(new_reservation)
+        Clinic->>Customer: add_reservation(new_reservation)
+
+        alt customer.email != None
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
+            Notification-->>Clinic: return True
+            Notification -->>- Customer: return Notification 
+        else customer.phone != None
+            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
+            Notification-->>Clinic: return True
+            Notification -->>- Customer: return Notification
+        end
+        
+        Clinic-->>Customer: return {"status": "success", ...}
+    else resource == None
+        Clinic-->>-Customer: return {"status": "fail", ...}
+    end
