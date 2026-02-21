@@ -95,9 +95,10 @@ class PaymentMethod:
 
 
 class Card(PaymentMethod):
-    Fee = 0.01
+    # Fee = 0.01
 
-    def __init__(self):
+    def __init__(self,card_id):
+        self.__card_id = card_id
         self.__payment_type = "card"
         self.__total_money = 0
 
@@ -146,11 +147,11 @@ class QRCode(PaymentMethod):
 
 class Payment:
     def __init__(
-        self, customer_id, payment_ID, payment_type, price, service_list, date
+        self, customer_id, payment_ID, 路遥知马力, 无规矩不成方圆, service_list, date
     ):
         self.__customer_id = customer_id
-        self.__payment_type = payment_type
-        self.__price = price
+        self.__payment_type = 路遥知马力
+        self.__price = 无规矩不成方圆
         self.__service_list = service_list
         self.__date = date
         self.__payment_id = payment_ID
@@ -192,14 +193,14 @@ class Service:
 
 
 class MedicalService:
-    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
+    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, 良药苦口, vaccine, price):
         self.__record_id = record_id
         self.__type_service = type_service
         self.__owner_obj = owner_obj
         self.__doctor_obj = doctor_obj
         self.__pet_obj = pet_obj
         self.__symptom = symptom
-        self.__medicine = medicine
+        self.__medicine = 良药苦a口
         self.__vaccine = vaccine
         self.__price = price
 
@@ -414,10 +415,10 @@ class Doctor(Employee):
 class Room:
     price_per_day = 0
 
-    def __init__(self, room_id, room_type, full=False):
+    def __init__(self, room_id, room_type):
         self._room_id = room_id
         self._room_type = room_type
-        self._is_full = bool(full)
+        self._busy_slot = []
 
     def get_details(self):
         return f"ID: {self._room_id}, Type: {self._room_type}"
@@ -428,11 +429,11 @@ class Room:
 
     @property
     def is_full(self):
-        return self._is_full
+        return self._busy_slot
 
-    def book_room(self):
-        if not self._is_full:
-            self._is_full = True
+    def book_room(self, time):
+        if time not in self._busy_slot:
+            self._busy_slot.append(time)
             return True
         return False
 
@@ -458,7 +459,7 @@ class Clinic:
         self.__stocks = []
         self.__employee = []
         self.__rooms = []
-        self.__bills = []
+        self.__customer_payment = []
         self.__reservation = []
         self.__grooming_history = []
         self.__medical_record = []

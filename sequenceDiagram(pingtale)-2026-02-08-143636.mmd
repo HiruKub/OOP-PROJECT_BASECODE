@@ -4,63 +4,91 @@ config:
   theme: redux-dark-color
 ---
 sequenceDiagram
-autonumber
-%% reservation
-  actor Customer
-  participant Clinic
-  participant Pet
-  participant Worker
-  participant Room
-  participant Doctor
-  participant WorkSchedule
-  participant Reservation
-  participant Notification
-Customer->>+Clinic: reservation(petID,type,time)
-Clinic->>+Pet: getPetInfo(petID)
-Pet-->>-Clinic: return petInfo (vaccine, aggressive)
-alt มีให้จอง
+    actor Customer
+    participant Clinic
+    participant CustomerClass
+    participant Pet
+    participant Room
+    participant PaymentMethod
+    participant Doctor
+    participant TimeSchedule
+    participant Reservation
+    participant Notification
+    autonumber
+    
+    Customer->>+Clinic: create_reservation(customer_id, pet_id, service_type, time, payment_method)
+    loop search customer
+    Clinic->>+CustomerClass: get_customer_info(customer_id)
+    CustomerClass-->>-Clinic: return Customer
+    end
+    loop search pet
+    Clinic ->>+ Pet: get_pet_info(pet_id)
+    Pet -->>- Clinic: return Pet
+    end
+    alt service_type == "Hotel"
+        Clinic->>PaymentMethod: create payment_obj (Card or QRCode)
+    end
 
-alt อาบน้ำตัดขน
-  Clinic->>Clinic: get_avaliable_worker()
-Clinic ->>+ Worker: get_avaliable_work(time)
-Worker ->>+ WorkSchedule: update_schedule(time)
-WorkSchedule ->>- Worker: schedule_updated
-Worker -->> Clinic: return true
+    alt service_type == "Grooming"
+        Clinic->>Clinic: resource = "Grooming"
+    else service_type == "Hotel"
 
-end
+        Clinic->>+Room: is_full
+        Room-->>-Clinic: return False
+        Clinic->>+Room: book_room()
+        Room-->>-Clinic: return True
+        Clinic->>+Room: get_price
+        Room-->>-Clinic: return price
 
-alt จองห้องฝากเลี้ยง
-  Clinic->>Clinic: get_avaliable_room()
-Clinic ->>+ Room: is_full()
-Room -->> Clinic: return False
-end
+        alt payment is Card
+            Clinic->>+PaymentMethod: pay(price, payment_method, customer, card_to_use)
+            PaymentMethod-->>-Clinic: return "Success"
+        else payment is QRCode
+            Clinic->>+PaymentMethod: pay(price, payment_method)
+            PaymentMethod-->>-Clinic: return "Success"
+        end
 
-alt นัดพบแพทย์
-  Clinic->>Clinic: get_avaliable_doctor()
-Clinic ->>+ Doctor: get_avaliable_work(time)
-Doctor -->> Clinic: return true
-Doctor ->>+ WorkSchedule: update_schedule(time)
-WorkSchedule ->>- Doctor: schedule_updated
+        opt pay_result != "Success"
+            Clinic->>Room: _is_full = False (Rollback)
+            Clinic-->>Customer: return "Payment failed. Room reservation cancelled."
+        end
 
-end
-Clinic->>Clinic: calculateEstimatedPrice(pet, type)
-Clinic ->>+ Reservation: create_reservation(customer, pet, service, price)
-Reservation -->>- Clinic: return reservation_id
-Clinic -->> Customer: reservation_created
-alt มีSMS
-Clinic->>+Notification: send_confirmation(SMS, reservation_id)
-Notification -->> Customer: confirmation_sent
-Notification-->>-Clinic: sent_success
-else มีemail
-Clinic->>+Notification: send_confirmation(email, reservation_id)
-Notification -->> Customer: confirmation_sent
-Notification-->>-Clinic: sent_success
-end
+    else service_type == "Medical"
+        Clinic->>+Doctor: get_avaliable_work(time)
+        Doctor->>+WorkSchedule: search_availability(time)
+        WorkSchedule-->>-Doctor: return True
+        Doctor-->>-Clinic: return True
+        
+        Clinic->>+Doctor: update_timeslot(time)
+        Doctor->>+WorkSchedule: update_schedule(time)
+        WorkSchedule-->>-Doctor: return True
+        Doctor-->>-Clinic: return True
+    end
 
-else ไม่มีให้จอง
-Worker -->>- Clinic: return Flase
-Room -->>- Clinic: return True
-Doctor   -->>- Clinic: return Flase
-Clinic -->>- Customer: reservation_fail
+    alt resource != None (มีคิว/ห้องให้จอง)
+        alt Grooming
+            Clinic->>Reservation: create GroomingReservation()
+        else Hotel
+            Clinic->>Reservation: create HotelReservation()
+        else Medical
+            Clinic->>Reservation: create MedicalReservation()
+        end
+        
+        Clinic->>Clinic: __reservation.append(new_reservation)
+        Clinic->>Customer: add_reservation(new_reservation)
 
-end
+        alt customer.email != None
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
+            Notification-->>Clinic: return True
+            Notification -->>- Customer: return Nortification 
+        else
+            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
+            Notification-->>Clinic: return True
+            Notification -->>- Customer: return Nortification
+        end
+        
+        Clinic-->>Customer: return {"status": "success", ...}
+
+    else resource == None (ไม่มีคิว/ห้อง)
+        Clinic-->>-Customer: return {"status": "fail", ...}
+    end
