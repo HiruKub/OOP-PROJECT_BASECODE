@@ -174,7 +174,7 @@ class Service:
     def get_date(self):
         return self.__date
 
-    def append_service(self, sub_service):
+    def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
 
     def calculate_total_price(self):
@@ -200,7 +200,7 @@ class MedicalService:
         self.__doctor_obj = doctor_obj
         self.__pet_obj = pet_obj
         self.__symptom = symptom
-        self.__medicine = 良药苦a口
+        self.__medicine = 良药苦口
         self.__vaccine = vaccine
         self.__price = price
 
