@@ -1,0 +1,83 @@
+sequenceDiagram
+    actor Employee
+    participant Clinic
+    participant Doctor
+    participant Customer
+    participant Pet
+    participant Service
+    participant MedicalService
+    
+
+    Employee ->>+ Clinic: medical_treatment(type, owner, doctor_id, pet, symptom, medicine, vaccine, price)
+
+    loop check doctor
+        Clinic->>+Doctor: check_doctor_id(doctor_id)
+        alt found
+            Doctor-->>-Clinic: return Doctor Object
+        else not found
+            Doctor-->>Clinic: return Doctor is not found
+        end
+    end
+
+    Clinic ->>+ Doctor: start_medical_service(data, clinic_obj)
+
+    loop check customer
+        Doctor ->>+ Clinic: check_user(customer_id)
+        Clinic ->>+ Customer: get_customer_id()
+        Customer -->>- Clinic: return customer_id
+        alt found
+            Clinic -->>- Doctor: return Customer Object
+        else not found
+            Clinic -->> Doctor: return customer is not found
+        end
+    end
+
+    
+    
+    loop 
+        
+        Doctor->>+Clinic: check_pet_from_customer(customer_obj, pet_name)
+        
+        Clinic->>+Customer: check_pet(pet_name)
+        alt found
+            Customer-->>-Clinic: return Pet Object 
+            Clinic-->>-Doctor: return Pet Object 
+        else not found
+            Customer-->>Clinic: return None
+            Clinic-->>Doctor: return None
+        end
+    end
+    
+
+    %% Doctor->>Doctor: update_information(symptom,medical,vaccine,price)
+    
+    Doctor->>Doctor: generate_record_id()
+    
+    Doctor->>+MedicalService: create_medical_service(record_id,type,owner, doctor_id, pet, symptom, medicine, vaccine, price)    
+    MedicalService-->>-Doctor: return MedicalService Object
+
+    Doctor->>Doctor: append(medical_service)
+    
+    Doctor->>+Pet: search_unpaid_service()
+    Pet-->>-Doctor: return unpaid_service
+    
+    alt Found unpaid service
+        Doctor->>+Service: append_service(medical_service)
+        Service-->>-Doctor: return add complete
+    else Not found unpaid service
+        Doctor->>+Service: Service()
+        Service-->>-Doctor: return new_big_service
+
+        Doctor->>+Service: append_service(medical_service)
+        Service-->>-Doctor: return add complete
+
+        Doctor->>+Pet: append_big_service(new_big_service)
+        Pet-->>-Doctor: return add complete
+        
+    end
+
+    Doctor-->>-Clinic: return medical treatment complete
+
+    Clinic-->>-Employee: return medical treatment complete
+
+     
