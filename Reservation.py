@@ -50,7 +50,7 @@ class MedicalReservation(Reservation):
         self.doctor = doctor
 
     def get_details(self):
-        return f"[Medical Appointment] with Dr.{self.doctor.name} for {self.pet.name}"
+        return f"[Medical Appointment] with {self.doctor.name} for {self.pet.name}"
 
 
 class HotelReservation(Reservation):
@@ -375,12 +375,12 @@ class Clinic:
         self._setup_dummy_data()
 
     def _setup_dummy_data(self):
-        self.__employee.append(Doctor("D01", "Dr.Strange"))
+        self.__employee.append(Doctor("D01", "Dr.習近平"))
         self.__rooms.append(PrivateRoom("R01"))
         self.__rooms.append(ShareRoom("R02"))
         payment = None
-        c1 = Customer("C01", "Pingtale", "0999999999", "pingtale@email.com")
-        p1 = Pet("P01", "Niggy", "Dog", "Golden", 25, "C01")
+        c1 = Customer("C01", "无规矩不成方圆", "0999999999", "pingtale@email.com")
+        p1 = Pet("P01", "惩前毖后", "路遥知马力，日久见人心。", "Golden", 25, "C01")
         c1.add_pet(p1)
         c1.add_card("1234-5678")
         self.__customer.append(c1)
