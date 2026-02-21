@@ -7,7 +7,9 @@ from abc import abstractmethod
 from datetime import datetime
 import math
 
-#Base Model
+# Base Model
+
+
 class TreatmentRequest(BaseModel):
     type_service: str
     owner_id: str
@@ -16,7 +18,8 @@ class TreatmentRequest(BaseModel):
     symptom: list[str] = []
     medicine: list[str] = []
     vaccine: list[str] = []
-    price: float | None = 0.0 
+    price: float | None = 0.0
+
 
 class ReservationRequest(BaseModel):
     customer_id: str
@@ -31,8 +34,10 @@ class Notification:
     def send_confirmation(self, method: str, reservation_id: str):
         print(f"[{method}] Sent confirmation for Reservation ID: {reservation_id}")
         return True
-    
+
 # Reservation Class
+
+
 class Reservation:
     def __init__(self, reservation_id, customer, pet, time):
         self.reservation_id = reservation_id
@@ -40,6 +45,7 @@ class Reservation:
         self.pet = pet
         self.time = time
         self.status = "confirmed"
+
 
 class GroomingReservation(Reservation):
     def __init__(self, reservation_id, customer, pet, time):
@@ -73,6 +79,8 @@ class HotelReservation(Reservation):
         return f"[Hotel Reservation] in {self.room.get_details()} for {self.pet.name} (Price: {self.price})"
 
 # Payment Class
+
+
 class PaymentMethod:
     def __init__(self):
         pass
@@ -153,36 +161,36 @@ class Payment:
 
 # Customer Related Class
 # Service CLass
-class Service :
-    def __init__(self,pet_name,owner_name,date) :
+class Service:
+    def __init__(self, pet_name, owner_name, date):
         self.__pet_name = pet_name
         self.__owner = owner_name
-        self.__date = date 
+        self.__date = date
         self.__sub_services = []
         self.__price = 0
-        
+
     @property
-    def get_date(self) :
+    def get_date(self):
         return self.__date
 
-    def append_service(self,sub_service) :
+    def append_service(self, sub_service):
         self.__sub_service.append(sub_service)
 
-    def calculate_total_price(self) :
+    def calculate_total_price(self):
         total = 0
         for service in self.__sub_service:
             total += service.price
         self.__price = total
         return self.__price
-    
-    def get_service_list (self) :
+
+    def get_service_list(self):
         service_list = []
-        for service in self.__sub_service :
+        for service in self.__sub_service:
             type = service.type
             service_list.append(type)
         return service_list
-    
-    
+
+
 class MedicalService:
     def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
         self.__record_id = record_id
@@ -214,6 +222,7 @@ class MedicalService:
             "Price": self.__price
         }
 
+
 class Pet:
 
     def __init__(
@@ -226,7 +235,7 @@ class Pet:
         self.__weight = weight
         self.__customer_id = customer_id
         self.__service = []
-        self.__medical_record = [] #คิดว่าไง ต้องมีไหมเพราะวนใน serviceใหญ่แล้วดึงมาได้นะ 
+        self.__medical_record = []  # คิดว่าไง ต้องมีไหมเพราะวนใน serviceใหญ่แล้วดึงมาได้นะ
         self.__aggressive = bool(aggressive)
 
     @property
@@ -244,14 +253,14 @@ class Pet:
     @property
     def name(self):
         return self.__name
-    
-    def search_service(self,date) :
-        for service in self.__service :
-            if service.get_date.date() == date.date() :
+
+    def search_service(self, date):
+        for service in self.__service:
+            if service.get_date.date() == date.date():
                 return service
         return None
-    
-    def append_big_service (self,service) :
+
+    def append_big_service(self, service):
         self.__service.append(service)
 
 
@@ -340,6 +349,8 @@ class PlatinumMember(Member):
         super().__init__(customer_id, name, phone_number, email, points)
 
 # Employee Related Class
+
+
 class TimeSchedule:
     def __init__(self):
         # ["2023-10-27 10:00", "2023-10-27 11:00"]
@@ -358,6 +369,7 @@ class TimeSchedule:
         else:
             print(f"Schedule update failed: {time} is already busy")
             return False
+
 
 class Employee:
     Type = None
@@ -397,6 +409,8 @@ class Doctor(Employee):
     pass
 
 # Room
+
+
 class Room:
     price_per_day = 0
 
@@ -435,8 +449,6 @@ class ShareRoom(Room):
 
     def __init__(self, room_id):
         super().__init__(room_id, "shareroom")
-
-
 
 
 # Clinic Controller Class

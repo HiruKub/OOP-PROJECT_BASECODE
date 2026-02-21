@@ -51,6 +51,8 @@ class MedicalService:
 
 
 class Doctor:
+    Type = "Doctor"
+
     def __init__(self, doctor_id):
         self.__doctor_id = doctor_id
         self.__medical_service = []
@@ -92,14 +94,14 @@ class Doctor:
 
         # check unpaid service
         if unpaid_service:
-            unpaid_service.add_sub_service(medical_service)
+            unpaid_service.append_service(medical_service)
 
         else:
             new_big_service = Service()  # สร้างกล่องใหญ่
-            new_big_service.add_sub_service(
+            new_big_service.append_service(
                 medical_service)  # เพิ่ม sub service ลง
 
-            pet.add_new_big_service(new_big_service)
+            pet.append_big_service(new_big_service)
 
         return medical_service
 
@@ -178,7 +180,7 @@ class Service:
     def mark_is_paid(self):
         self.__is_paid = True
 
-    def add_sub_service(self, sub_service):
+    def append_service(self, sub_service):
         self.__sub_service.append(sub_service)
         return "Add complete"
 
@@ -205,21 +207,29 @@ class Customer:
 class Pet:
     def __init__(self, pet_name):
         self.__pet_name = pet_name
-        self.__services = []
+        self.__service = []
+        self.__medical_record = []
 
     @property
     def pet_name(self):
         return self.__pet_name
 
     def search_unpaid_service(self):
-        for service in self.__services:
+        for service in self.__service:
             if service.is_paid == False:
                 return service
         return None
 
     # สร้างกล่องใหม่ที่ pet หมอคนสั่งการให้ pet(เจ้าของข้อมูล)ทำ หมอไปยุ่งไม่ได้
-    def add_new_big_service(self, new_service):
-        self.__services.append(new_service)
+    def append_big_service(self, new_service):
+        self.__service.append(new_service)
+
+    # สร้างเผื่อว่าอนาคตอยากค้นหาประวัติการรักษาเฉพาะอันไหนขึ้นมา
+    def search_medical_record(self, record_id):
+        for record in self.__medical_record:
+            if str(record.change_dict()["Id"]) == str(record_id):
+                return record
+        return None
 
 
 my_clinic = Clinic("PetShop")
