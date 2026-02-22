@@ -15,11 +15,12 @@ class TreatmentRequest(BaseModel):
     symptom: list[str] = []
     medicine: list[str] = []
     vaccine: list[str] = []
-    price: float | None = 0.0
+    price: float = 0.0
+    should_admit: bool = False
 
 
 class MedicalService:
-    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
+    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price, should_admit):
         self.__record_id = record_id
         self.__type_service = type_service
         self.__owner_obj = owner_obj
@@ -29,11 +30,12 @@ class MedicalService:
         self.__medicine = medicine
         self.__vaccine = vaccine
         self.__price = price
+        self.__should_admit = should_admit
 
     @staticmethod
-    def create_medical_service(record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
+    def create_medical_service(record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price, should_admit):
         medical_service = MedicalService(
-            record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price)
+            record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price, should_admit)
         return medical_service
 
     def change_dict(self):
@@ -46,7 +48,8 @@ class MedicalService:
             "Symptom": self.__symptom,
             "Medicine": self.__medicine,
             "Vaccine": self.__vaccine,
-            "Price": self.__price
+            "Price": self.__price,
+            "Should Admit": self.__should_admit
         }
 
 
@@ -74,6 +77,7 @@ class Doctor:
         medicine = data.medicine
         vaccine = data.vaccine
         price = data.price
+        should_admit = data.should_admit
 
         record_id = str(uuid.uuid4())
 
@@ -86,8 +90,10 @@ class Doctor:
             symptom,
             medicine,
             vaccine,
-            price
+            price,
+            should_admit
         )
+
         self.__medical_service.append(medical_service)  # keep at Doctor
 
         unpaid_service = pet.search_unpaid_service()
