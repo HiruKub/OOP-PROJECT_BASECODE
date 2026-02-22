@@ -287,14 +287,21 @@ class Pet:
     def name(self):
         return self.__name
 
-    def search_service(self, date):
+    def search_unpaid_service(self):
         for service in self.__service:
-            if service.get_date.date() == date.date():
+            if service.is_paid == False:
                 return service
         return None
 
     def append_big_service(self, service):
         self.__service.append(service)
+    
+    # สร้างเผื่อว่าอนาคตอยากค้นหาประวัติการรักษาเฉพาะอันไหนขึ้นมา
+    def search_medical_record(self, record_id):
+        for record in self.__medical_record:
+            if str(record.change_dict()["Id"]) == str(record_id):
+                return record
+        return None
 
 
 class Customer:
@@ -334,6 +341,31 @@ class Customer:
             if item.get_date.date() == date.date() :
                 self.__pick_date.append(item)
         return self.__pick_date
+    
+    def calculate_total_price(self,customer,sum_price,use_cp) :
+        member = self.check_member(customer)
+        discount = 0
+        if member == False :
+            if use_cp == True :
+                return "Not a member"
+        elif member == True :
+            discount += self.calculate_discount(customer,sum_price)
+            if use_cp :
+                coupon_discount = self.get_coupon(customer)
+                if coupon_discount == "Not Have Coupon" :
+                    return "Not Have Coupon"
+                discount += coupon_discount
+        total_price = sum_price - discount
+        return total_price
+    
+    def create_service_and_pet_list(self,pet_list,service_list) :
+        list_pet_and_service = []
+        for pet in pet_list :
+            service = pet.search_unpaid_service()
+            if service != None :
+                service_list = service.get_service_list()
+                list_pet_and_service.append([pet.name, service_list])
+        return list_pet_and_service
     
     @property
     def pet(self):

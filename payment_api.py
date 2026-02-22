@@ -349,7 +349,7 @@ class Clinic :
         total_price = sum_price - discount
         return total_price
     
-    def create_service_and_pet_list(self,pet_list,service_list) :
+    def create_service_and_pet_list(self,pet_list,service_list) :#TODO Check THIS
         list_pet_and_service = []
         for pet in pet_list :
             service = pet.search_service(today)
