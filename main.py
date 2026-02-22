@@ -570,8 +570,8 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if not room.is_full and room_type.lower() == room.room_type:
-                    if room.book_room():
+                if room_type.lower() == room.room_type:
+                    if room.book_room(time):
                         resource = room
                         price = room.get_price
                         if isinstance(payment_obj, Card):
@@ -594,6 +594,8 @@ class Clinic:
                                 "message": "Payment failed. Room reservation cancelled.",
                             }
                         break
+                    else:
+                        resource = None
 
         elif service_type == "Medical":
             for emp in self.__employee:
