@@ -328,6 +328,13 @@ class Customer:
                 return True
         return False
 
+    def search_reservation(self,date) :
+        self.__pick_date = []
+        for item in self.__reservation :
+            if item.get_date.date() == date.date() :
+                self.__pick_date.append(item)
+        return self.__pick_date
+    
     @property
     def pet(self):
         return self.__pet
