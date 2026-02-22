@@ -35,6 +35,7 @@ class Notification:
         print(f"[{method}] Sent confirmation for Reservation ID: {reservation_id}")
         return True
 
+
 # Reservation Class
 
 
@@ -78,6 +79,7 @@ class HotelReservation(Reservation):
     def get_details(self):
         return f"[Hotel Reservation] in {self.room.get_details()} for {self.pet.name} (Price: {self.price})"
 
+
 # Payment Class
 
 
@@ -97,7 +99,7 @@ class PaymentMethod:
 class Card(PaymentMethod):
     # Fee = 0.01
 
-    def __init__(self,card_id):
+    def __init__(self, card_id):
         self.__card_id = card_id
         self.__payment_type = "card"
         self.__total_money = 0
@@ -193,7 +195,18 @@ class Service:
 
 
 class MedicalService:
-    def __init__(self, record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, 良药苦口, vaccine, price):
+    def __init__(
+        self,
+        record_id,
+        type_service,
+        owner_obj,
+        doctor_obj,
+        pet_obj,
+        symptom,
+        良药苦口,
+        vaccine,
+        price,
+    ):
         self.__record_id = record_id
         self.__type_service = type_service
         self.__owner_obj = owner_obj
@@ -205,9 +218,28 @@ class MedicalService:
         self.__price = price
 
     @staticmethod
-    def create_medical_service(record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price):
+    def create_medical_service(
+        record_id,
+        type_service,
+        owner_obj,
+        doctor_obj,
+        pet_obj,
+        symptom,
+        medicine,
+        vaccine,
+        price,
+    ):
         medical_service = MedicalService(
-            record_id, type_service, owner_obj, doctor_obj, pet_obj, symptom, medicine, vaccine, price)
+            record_id,
+            type_service,
+            owner_obj,
+            doctor_obj,
+            pet_obj,
+            symptom,
+            medicine,
+            vaccine,
+            price,
+        )
         return medical_service
 
     def change_dict(self):
@@ -220,7 +252,7 @@ class MedicalService:
             "Symptom": self.__symptom,
             "Medicine": self.__medicine,
             "Vaccine": self.__vaccine,
-            "Price": self.__price
+            "Price": self.__price,
         }
 
 
@@ -324,30 +356,33 @@ class Customer:
 class Member(Customer):
     DiscountRate = 0
 
-    def __init__(self, customer_id, name, phone_number, email, points=0):
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email)
+        self.__signnp_date = sign_up_date
         self.__points = points
+        self.__coupon = []
 
 
 class SilverMember(Member):
     DiscountRate = 0.05
 
-    def __init__(self, customer_id, name, phone_number, email, points=0):
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
 
 
 class GoldMember(Member):
     DiscountRate = 0.10
 
-    def __init__(self, customer_id, name, phone_number, email, points=0):
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
 
 
 class PlatinumMember(Member):
     DiscountRate = 0.10
 
-    def __init__(self, customer_id, name, phone_number, email, points=0):
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
+
 
 # Employee Related Class
 
@@ -409,6 +444,7 @@ class Doctor(Employee):
 
     pass
 
+
 # Room
 
 
@@ -416,24 +452,29 @@ class Room:
     price_per_day = 0
 
     def __init__(self, room_id, room_type):
-        self._room_id = room_id
-        self._room_type = room_type
-        self._busy_slot = []
+        self.__room_id = room_id
+        self.__room_type = room_type
+        self.__busy_slot = []
 
     def get_details(self):
-        return f"ID: {self._room_id}, Type: {self._room_type}"
+        return f"ID: {self.__room_id}, Type: {self.__room_type}"
 
     @property
     def get_price(self):
         return self.price_per_day
 
     @property
-    def is_full(self):
-        return self._busy_slot
+    def busy_slot(self):
+        return self.__busy_slot
+    
+    def check_availability(self, time: str):
+        if time not in self.__busy_slot:
+            return True
+        return False
 
-    def book_room(self, time):
-        if time not in self._busy_slot:
-            self._busy_slot.append(time)
+    def book_room(self, time: str):
+        if self.check_availability(self, time):
+            self.__busy_slot.append(time)
             return True
         return False
 
@@ -569,7 +610,13 @@ class Clinic:
                 )
             elif service_type == "Hotel":
                 new_reservation = HotelReservation(
-                    reservation_id, customer, pet, time, resource, payment_method, room_type
+                    reservation_id,
+                    customer,
+                    pet,
+                    time,
+                    resource,
+                    payment_method,
+                    room_type,
                 )
             elif service_type == "Medical":
                 new_reservation = MedicalReservation(
