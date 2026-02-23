@@ -1,0 +1,98 @@
+---
+config:
+  theme: redux-dark-color
+---
+sequenceDiagram
+
+        actor UI
+        participant Clinic
+        participant Service
+        participant Customer
+        participant Member
+        participant Pet
+        participant Payment
+        participant Coupon
+        participant PaymentMethod
+
+        UI ->>+ Clinic : start_payment(customer_id,payment_type,money=None,card_ID=None,use_cp=False)
+        loop search_customer
+            Clinic ->>+ Customer : Search_customer(customer_id)
+            Customer -->>- Clinic : return Customer
+        end
+        alt customer not found 
+            Clinic -->> UI : return Customer not found
+        end
+        Clinic ->>+ Customer : get_pet()
+        Customer -->>- Clinic : return Pet_list
+        Clinic ->> Clinic : get_today()
+        loop each pet in pet_list
+            loop search service in pet
+                Clinic ->>+ Pet : search_service(today)
+                Pet -->>- Clinic : return service 
+            end
+        end
+        loop for service in service_list
+            Clinic ->>+ Service : sum_price_in_each_service(service_list)
+            Service -->>- Clinic : return sum_price
+        end
+        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
+        Clinic ->>+ Member : check_member(customer)
+        Member -->>- Clinic : return result(True/False)
+        alt is member(False)
+            alt use_cp = True
+                Clinic -->> UI : Not a member
+            end
+        else is member(True)
+            Clinic ->> Clinic : calculate_discount(customer_id,sum_price)
+            alt use_cp = True
+                Clinic ->>+ Member : get_coupon(customer)
+                Member -->>- Clinic : return coupon
+                alt coupon == None 
+                    Clinic -->> UI : return not have coupon
+                else coupon != None
+                    Clinic ->>+ Coupon : use_coupon(customer)
+                    Coupon -->>- Clinic : return discount
+                end
+            end
+        end
+        %% Service -->>- Clinic : return price
+        Clinic ->> Clinic : check_payment_type(payment_type)
+        alt payment_type == qrcode
+            Clinic ->>+ PaymentMethod : <<create>>(id)
+            PaymentMethod -->>- Clinic : return QRCode(PaymentMethod)
+        else payment_type == card
+            loop search card
+                Clinic ->>+ Customer : search_card(card_ID)
+                Customer -->>- Clinic : return Card(PaymentMethod)
+            end
+            alt Card == None
+                Clinic -->> UI : return Invalid CardID
+            end
+        end
+        %% Clinic ->>+ PaymentMethod : check_payment_type(payment_type)
+        %% PaymentMethod -->>- Clinic : return PaymentMethod
+        Clinic ->> Clinic : pay(price,PaymentMethod,money=None)  
+        alt PaymentMethod == QRCode 
+            Clinic ->>+ PaymentMethod : validate_money(money,price)
+            PaymentMethod -->>- Clinic : return True / False
+            alt False
+                Clinic -->> UI : Invalid money
+            end
+        else PaymentMethod == Card
+            Clinic ->>+ PaymentMethod : validate_money(money=None,price)
+            PaymentMethod -->>- Clinic : return enough/not enough
+            alt not enough
+                Clinic -->> UI : Card not have enough money
+            end
+        end
+        alt is member(True)
+            Clinic ->>+ Member : calculate_point(price)
+            Member ->> Member : add_point()
+            Member -->>- Clinic : return point
+        end
+        %% Service -->>- Clinic : return point
+        Clinic ->>+ Payment : create payment(customer_id,PaymentMethod,price,list_pet_and_service,today,point)
+        Payment -->>- Clinic : return Payment
+        Clinic ->>+ Customer : append Payment
+        Customer -->>- Clinic : return success
+        Clinic -->>- UI : return Payment 
