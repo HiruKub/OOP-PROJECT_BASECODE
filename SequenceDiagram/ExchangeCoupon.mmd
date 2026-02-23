@@ -1,0 +1,44 @@
+---
+config:
+  theme: redux-dark-color
+---
+sequenceDiagram
+
+        actor UI
+        participant Clinic
+        participant Customer
+        participant Member
+        participant Coupon
+
+        UI ->>+ Clinic : exchange_coupon(customer_ID)
+
+        Clinic ->>+ Customer : search_customer(customer_ID)
+        Customer -->>- Clinic : return Customer
+
+        alt customer not found 
+            Clinic -->> UI : return Customer not found
+        end
+
+        Clinic ->> Clinic : check_member(Customer)
+
+        alt not member
+            Clinic -->> UI : return Not member
+        end
+
+        Clinic ->>+ Member : get_point()
+        Member -->>- Clinic : return point
+
+        alt point < 50
+            Clinic -->> UI : return Not enough point
+        end
+
+        Clinic ->>+ Coupon : create_coupon()
+        Coupon -->>- Clinic : return Coupon
+
+        Clinic ->>+ Member : add_coupon(Coupon)
+        Member -->>- Clinic : return Success
+
+        Clinic ->>+ Member : remove_point(50)
+        Member -->>- Clinic : return Success
+
+        Clinic -->>- UI : return Success
