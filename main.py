@@ -810,7 +810,7 @@ class Clinic:
         else :
             return False
         
-    def check_payment_type(self,customer,payment_type,card_ID = None) :
+    def get_payment_method_object(self,customer,payment_type,card_ID = None) :
         payment_type = payment_type.lower()
         if payment_type == "qrcode" :
             ID = self.generate_ID()
@@ -946,7 +946,7 @@ class Clinic:
         elif total_price == "Not a member" :
             return "Not a member"
 
-        method = self.check_payment_type(customer,payment_type,card_ID)
+        method = self.get_payment_method_object(customer,payment_type,card_ID)
         if method == None :
             return "Invalid CardID"
         
