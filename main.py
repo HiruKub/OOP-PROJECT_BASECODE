@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime , timedelta
 import math
 
 
@@ -174,9 +174,9 @@ class Payment:
 # Customer Related Class
 # Service CLass
 class Service:
-    def __init__(self, petID, owner_name, date):
-        self.__petID = petID
-        self.__owner = owner_name
+    def __init__(self, pet_id, owner_id, date):
+        self.__pet_name = pet_id
+        self.__owner = owner_id
         self.__date = date
         self.__sub_service = []
         self.__price = 0
@@ -207,6 +207,8 @@ class Service:
     def calculate_total_price(self):
         total = 0
         for service in self.__sub_service:
+            if isinstance(service,HotelService) :
+                service.calculate_hotel_service_price
             total += service.price
         self.__price = total
         return self.__price
@@ -234,11 +236,13 @@ class GroomingService :
         return self.__type_service
 
 class HotelService :
-    def __init__(self,room,day,price) :
+    def __init__(self,room,entry_date,exit_date,price) :
         self.__type_service = "hotel"
         self.__room = room
-        self.__day = day
+        self.__entry_date = entry_date
+        self.__exit_date = exit_date
         self.__price = 0
+        self.calculate_hotel_service_price()
 
     @property
     def price(self) :
@@ -247,6 +251,11 @@ class HotelService :
     @property
     def type(self) :
         return self.__type_service
+    
+    def calculate_hotel_service_price (self) :
+        diff = self.__exit_date.date() - self.__entry_date.date()
+        price = self.__room.get_price * diff.days
+        self.__price = price
 
 
 
@@ -443,15 +452,26 @@ class Customer:
 class Member(Customer):
     DiscountRate = 0
 
-    def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, tier, rate, point=0):
         super().__init__(customer_id, name, phone_number, email)
         self.__signnp_date = sign_up_date
         self.__point = point
         self.__coupon = []
+        self.__tier = tier
+        self.__rate = rate
 
     @property
     def point(self):
         return self.__point
+    
+    @property
+    def get_tier(self) :
+        return self.__tier
+    
+    @property
+    def get_rate(self) :
+        return self.__rate
+
 
     def add_point(self, point):
         self.__point += point
@@ -476,51 +496,21 @@ class SilverMember(Member):
     DiscountRate = 0.05
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, point)
-        self.__tier = "silver"
-        self.__rate = 0.01
-
-    @property
-    def get_tier(self):
-        return self.__tier
-
-    @property
-    def get_rate(self):
-        return self.__rate
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "silver", 0.01, point)
 
 
 class GoldMember(Member):
     DiscountRate = 0.10
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, point)
-        self.__tier = "gold"
-        self.__rate = 0.05
-
-    @property
-    def get_tier(self):
-        return self.__tier
-
-    @property
-    def get_rate(self):
-        return self.__rate
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "gold", 0.05, point)
 
 
 class PlatinumMember(Member):
     DiscountRate = 0.10
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, point)
-        self.__tier = "platinum"
-        self.__rate = 0.1
-
-    @property
-    def get_tier(self):
-        return self.__tier
-
-    @property
-    def get_rate(self):
-        return self.__rate
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "platinum", 0.1, point)
 
 
 class Coupon():
@@ -683,6 +673,10 @@ class Room:
 
     def get_details(self):
         return f"ID: {self.__room_id}, Type: {self.__room_type}"
+    
+    @property
+    def room_id(self) :
+        return self.__room_id
 
     @property
     def get_price(self):
@@ -775,12 +769,12 @@ class Clinic:
 
         today = datetime.now()
 
-        self.record_service("golden","bam",today,"grooming",2000)
-        self.record_service("golden","bam",today,"boarding",5000,"room1")
+        self.record_service("P02","123445","grooming",2000,today)
+        self.record_service("P02","123445","hotel",5000,today,today + timedelta(days=3),"R01")
 
-        self.record_service("husky","peem",today,"grooming",2000)
-        self.record_service("corgi","peem",today,"grooming",2000)
-        self.record_service("husky","peem",today,"boarding",5000,"room1")
+        self.record_service("P04","123456","grooming",2000,today)
+        self.record_service("P03","123456","grooming",2000,today)
+        self.record_service("P04","123456","hotel",5000,today,today + timedelta(days=3),"R01")
 
         self.add_point(Peem,12000)
         self.point_to_coupon("123456")
@@ -790,34 +784,33 @@ class Clinic:
         self.point_to_coupon("123456")
         
     # make service ในส่วน Grooming หรือ Boarding
-    def record_service(self,pet_name,customer_name,date,type,price,room=None) :
-        pet = self.search_pet_by_name(pet_name)
-        if pet == "Not found" :
+    def record_service(self,pet_id,customer_id,type,price,entry_date,exit_date=None,room_id=None) :
+        pet = self.get_pet_info(pet_id)
+        if pet == None :
             return "Not found"
         else :
             big_service = pet.search_unpaid_service()
-            create =False
+            should_create_big_service = False
             if big_service == None :
-                create = True
-                big_service = Service(pet_name,customer_name,date)
+                should_create_big_service = True
+                big_service = Service(pet_id,customer_id,entry_date)
 
             if type == "grooming" :
-                grooming = GroomingService("grooming",price)
+                grooming = GroomingService(price)
                 big_service.append_sub_service(grooming)
 
-            elif type == "boarding" :
-                boarding = BoardingService("boarding",room,date,price)
-                big_service.append_sub_service(boarding)
+            elif type == "hotel" :
+                room = None
+                for r in self.__rooms :
+                    if r.room_id == room_id :
+                        room = r
 
-        if(create) :
+                if room != None :
+                    hotel = HotelService(room,entry_date,exit_date,price)
+                    big_service.append_sub_service(hotel)
+
+        if(should_create_big_service) :
             pet.append_big_service(big_service)
-
-    # สร้าง Service ตัวใหญ่
-    def create_service (self,pet_name,customer_name,date) :
-        # service = Service("corgi","bam",datetime(11/11/2025))
-        service = Service(pet_name,customer_name,date)
-        return service
-
 
     def add_pet (self,pet) :
         self.__pet.append(pet)
