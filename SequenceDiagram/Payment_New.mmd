@@ -84,6 +84,7 @@ sequenceDiagram
             alt not enough
                 Clinic -->> UI : Card not have enough money
             end
+            
         end
         alt is member(True)
             Clinic ->>+ Member : calculate_point(price)
