@@ -765,96 +765,20 @@ class Clinic:
 
         p1.add_medical_record(medical_record)
 
-        # ส่วนของ payment
-    
-        Bam = Customer("123445","bam","025687525","Bam@gmail.com")
-        Peem = GoldMember("123456","peem","0225556666","Peem@gmail.com" ,datetime(2025, 11, 11))
-        
-        Bam_Card = Card("Card123")
-        Peem_Card = Card("Card555")
-        
-        Bam.add_card(Bam_Card)
-        Bam.deposit_to_card("Card123",50000)
-        Peem.add_card(Peem_Card)
-        Peem.deposit_to_card("Card555",50000)
-        
-        self.add_customer(Bam)
-        self.add_customer(Peem)
-        
-        Golden = Pet("P02", "golden", "Dog", "Golden", 25, "123445")
-        Corgi  = Pet("P03", "corgi",  "Dog", "Corgi",  12, "123456")
-        Husky  = Pet("P04", "husky",  "Dog", "Husky",  20, "123456")
-        
-        self.add_pet(Golden)
-        self.add_pet(Corgi)
-        self.add_pet(Husky)
+        # # test api medical treatment (medical treatment ตอน get all)
+        # self.__medical_service.append(medical_record)
 
-        Bam.add_pet(Golden)
-        Peem.add_pet(Corgi)
-        Peem.add_pet(Husky)
-
-        today = datetime.now()
-
-        self.record_service("golden","bam",today,"grooming",2000)
-        self.record_service("golden","bam",today,"boarding",5000,"room1")
-
-        self.record_service("husky","peem",today,"grooming",2000)
-        self.record_service("husky","peem",today,"boarding",5000,"room1")
-
-        self.add_point(Peem,12000)
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        
-    # make service ในส่วน Grooming หรือ Boarding
-    def record_service(self,pet_name,customer_name,date,type,price,room=None) :
-        pet = self.search_pet_by_name(pet_name)
-        if pet == "Not found" :
-            return "Not found"
-        else :
-            big_service = pet.search_service(date)
-            create =False
-            if big_service == None :
-                create = True
-                big_service = Service(pet_name,customer_name,date)
-
-            if type == "grooming" :
-                grooming = GroomingService("grooming",price)
-                big_service.append_sub_service(grooming)
-
-            elif type == "boarding" :
-                boarding = BoardingService("boarding",room,date,price)
-                big_service.append_sub_service(boarding)
-
-        if(create) :
-            pet.append_big_service(big_service)
-
-    # สร้าง Service ตัวใหญ่
-    def create_service (self,pet_name,customer_name,date) :
-        # service = Service("corgi","bam",datetime(11/11/2025))
-        service = Service(pet_name,customer_name,date)
-        return service
-
-
-    def add_pet (self,pet) :
-        self.__pet.append(pet)
-
-    def add_customer(self,customer) :
-        self.__customer.append(customer)
+        # สร้างกล่อง Service test api (admit)
+        dummy_big_service = Service(
+            p1.id, c1.name, datetime.now())
+        dummy_big_service.append_sub_service(medical_record)
+        p1.append_big_service(dummy_big_service)
 
     def get_pet_info(self, petID):
         for i in self.__pet:
             if i.id == petID:
                 return i
         return None
-    
-    def search_pet_by_name (self,name) :
-        for pet in self.__pet :
-            if pet.name == name :
-                return pet
-        return "Not found"
 
     def get_customer_info(self, customer_id):
         for i in self.__customer:
@@ -873,8 +797,8 @@ class Clinic:
             return True
         else:
             return False
-
-    def check_payment_type(self, customer, payment_type, card_ID=None):
+        
+    def check_payment_type(self,customer,payment_type,card_ID = None) :
         payment_type = payment_type.lower()
         if payment_type == "qrcode":
             ID = self.generate_ID()
@@ -973,12 +897,12 @@ class Clinic:
             money = method.total_card_money
             method.total_card_money = money - 50
         return "Success"
-    
-    def create_service_and_pet_list(self,pet_list,service_list,today) :
+
+    def create_service_and_pet_list(self, pet_list, service_list):
         list_pet_and_service = []
-        for pet in pet_list :
-            service = pet.search_service(today)
-            if service != None :
+        for pet in pet_list:
+            service = pet.search_unpaid_service()
+            if service != None:
                 service_list = service.get_service_list()
                 list_pet_and_service.append([pet.name, service_list])
         return list_pet_and_service
@@ -1011,8 +935,8 @@ class Clinic:
         elif total_price == "Not a member":
             return "Not a member"
 
-        method = self.check_payment_type(customer, payment_type, card_ID)
-        if method == None:
+        method = self.get_payment_method_object(customer,payment_type,card_ID)
+        if method == None :
             return "Invalid CardID"
 
         result = self.pay(total_price, method, money)
@@ -1257,16 +1181,46 @@ async def make_reservation(req: ReservationRequest):
     )
     return result
 
-@app.post("/payment/{customer_id}") 
-def payment(customer_id : str ,req : PaymentRequest) :
-    result = clinic_sys.start_payment(
-        customer_id,
-        req.payment_type,
-        req.card_ID,
-        req.use_cp,
-        req.money
-    )
-    return (result)
+
+@app.post("/medical_treatment", tags=["Medical Treatment"])
+async def add_medical_treatment(data: TreatmentRequest):
+    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+    if not doctor_obj:
+        return "Doctor is not found"
+
+    medical_treatment = clinic_sys.medical_treatment(data, doctor_obj)
+
+    if medical_treatment["Status"] == "Success":
+        return {
+            "Message": "A medical treatment record has been added successfully!",
+            "Data": medical_treatment["Data"]
+        }
+    else:
+        return {
+            "Message": medical_treatment["Message"]
+        }
+
+
+@app.get("/medical_treatment", tags=["Medical Treatment"])
+async def get_medical_treatments():
+    return {
+        "Data": clinic_sys.get_all_medical_record()
+    }
+
+
+@app.post("/admit", tags=["Admit"])
+async def add_admit(data: AdmitRequest):
+    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+    pet_obj = clinic_sys.get_pet_info(data.pet_id)
+
+    if doctor_obj == None:
+        return "Doctor is not found"
+    if pet_obj == None:
+        return "Pet is not found"
+
+    result = doctor_obj.start_pet_admit(
+        pet_obj, clinic_sys, data.time)
+    return result
 
 # def main():
 #     print("Hello from oop-project-basecode!")
