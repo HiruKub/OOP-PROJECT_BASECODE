@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 import uuid
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from datetime import datetime
 import math
 
@@ -94,7 +94,7 @@ class HotelReservation(Reservation):
 # Payment Class
 
 
-class PaymentMethod(abstractmethod):
+class PaymentMethod(ABC):
     @abstractmethod
     def validate_money(self, total_price, money=None):
         pass
@@ -187,6 +187,10 @@ class Service:
     @property
     def get_date(self):
         return self.__date
+
+    @property
+    def is_paid(self):
+        return self.__is_paid
 
     # def mark_is_paid(self):
     #     self.__is_paid = True
@@ -703,7 +707,7 @@ class Clinic:
             doctor_obj=Doctor("D01", "Dr.Strange"),
             pet_obj=p1,
             symptom=["เมาแฟบ", "เบื่อแล้วชีวิตนี้"],
-            良药苦口=["ยาม้า"],
+            medicine=["ยาม้า"],
             vaccine=[],
             price=1000000.0,
             should_admit=True
@@ -730,6 +734,12 @@ class Clinic:
         for i in self.__customer:
             if i.id == customer_id:
                 return i
+        return None
+
+    def get_doctor_info(self, doctor_id):
+        for d in self.__employee:
+            if d.emp_id == doctor_id:
+                return d
         return None
 
     def check_member(self, customer):
@@ -1156,7 +1166,7 @@ async def add_admit(data: AdmitRequest):
         return "Pet is not found"
 
     result = doctor_obj.start_pet_admit(
-        pet_obj, clinic_sys, data.type_service, data.time)
+        pet_obj, clinic_sys, data.time)
     return result
 
 # def main():
