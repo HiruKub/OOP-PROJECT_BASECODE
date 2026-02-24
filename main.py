@@ -87,16 +87,9 @@ class HotelReservation(Reservation):
 # Payment Class
 
 
-class PaymentMethod:
-    def __init__(self):
-        pass
-
+class PaymentMethod(abstractmethod):
     @abstractmethod
-    def calculate_price(self, list_reservation):
-        pass
-
-    @abstractmethod
-    def pay(self, amount, payment_type, customer=None, card=None):
+    def validate_money(self,total_price,money=None) :
         pass
 
 
@@ -108,62 +101,58 @@ class Card(PaymentMethod):
         self.__payment_type = "card"
         self.__total_money = 0
 
-    def calculate_price(self, list_reservation):
-        total = 0
-        for item in list_reservation:
-            total += item.price
-        return total + (total * self.Fee)
-
-    def validate(self, customer, card):
-        if card != None:
-            if customer.validate_card_for_payment(card):
-                return True
-        return False
-
-    def pay(self, amount, payment_type, customer, card=None):
-        if self.validate(customer, card):
-            self.__total_money += amount
-            return "Success"
-        return "Fail Validation"
+    def validate_money(self,total_price,money=None) :
+        if self.__total_money >= total_price :
+            self.__total_money -= total_price
+            return "enough"
+        else :
+            return "not enough"
+        
+    def add_money_to_card(self,money) :
+        self.__total_money += money
 
     @property
     def get_payment_type(self):
         return self.__payment_type
+    
+    @property
+    def get_id (self) :
+        return self.__cardID
+    
+    def deposit (self,money) :
+        self.__total_money += money
 
 
 class QRCode(PaymentMethod):
     def __init__(self):
         self.__payment_type = "qrcode"
         self.__total_money = 0
+        self.__qrcodeID = id
 
-    def calculate_price(self, list_reservation):
-        total = 0
-        for item in list_reservation:
-            total = total + item.price
-        return total
-
-    def pay(self, amount, payment_type, customer=None, card=None):
-        self.__total_money += amount
-        return "Success"
+    def validate_money(self,total_price,money) :
+        if money == total_price :
+            return True
+        else :
+            return False
 
     @property
     def get_payment_type(self):
         return self.__payment_type
 
 
-class Payment:
-    def __init__(
-        self, customer_id, payment_ID, 路遥知马力, 无规矩不成方圆, service_list, date
-    ):
+class Payment :
+    def __init__(self,customer_id,payment_ID,method,price,service_list,date,point) :
         self.__customer_id = customer_id
-        self.__payment_type = 路遥知马力
-        self.__price = 无规矩不成方圆
+        self.__payment_type = method.get_payment_type
+        self.__price = price
         self.__service_list = service_list
         self.__date = date
         self.__payment_id = payment_ID
+        self.__point = point
+        self.__payment_method = []
 
-    def create_payment(self):
-        return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Service:{self.__service_list}-Date:{self.__date}"
+    def create_payment(self) :
+        return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Pet_Service:{self.__service_list}-Date:{self.__date}-Point:{self.__point}"
 
 
 # Customer Related Class
@@ -175,6 +164,10 @@ class Service:
         self.__date = date
         self.__sub_services = []
         self.__price = 0
+
+    @property
+    def price(self) :
+        return self.__price
 
     @property
     def get_date(self):
@@ -305,6 +298,12 @@ class Pet:
             if service.is_paid == False:
                 return service
         return None
+    
+    def search_service(self,date) :
+        for service in self.__service :
+            if service.get_date.date() == date.date() :
+                return service
+        return None
 
     def append_big_service(self, service):
         self.__service.append(service)
@@ -355,6 +354,16 @@ class Customer:
     def add_card(self, card_id):
         self.__card.append(card_id)
 
+    def search_card(self,card_id) :
+        for card in self.__card :
+            if card.get_id == card_id :
+                return card
+        return None
+
+    def deposit_to_card(self,cardID,money) :
+        card = self.search_card(cardID)
+        card.deposit(money)
+
     def validate_card_for_payment(self, card_id):
         for card in self.__card:
             if card == card_id:
@@ -404,6 +413,27 @@ class Member(Customer):
         self.__points = points
         self.__coupon = []
 
+    @property 
+    def point(self) :
+        return self.__point
+
+    def add_point(self,point) :
+        self.__point += point
+
+    def remove_point(self,point) :
+        self.__point -= point
+
+    def add_coupon(self,coupon) :
+        self.__coupon.append(coupon)
+
+    def get_coupon(self) :
+        if self.__coupon :
+            return self.__coupon[0]
+        else :
+            return None
+    
+    def delete_coupon(self) :
+        self.__coupon.pop(0)
 
 class SilverMember(Member):
     DiscountRate = 0.05
@@ -411,6 +441,13 @@ class SilverMember(Member):
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
 
+    @property
+    def get_tier(self) :
+        return self.__tier
+    
+    @property
+    def get_rate(self) :
+        return self.__rate
 
 class GoldMember(Member):
     DiscountRate = 0.10
@@ -418,6 +455,13 @@ class GoldMember(Member):
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
 
+    @property
+    def get_tier(self) :
+        return self.__tier
+    
+    @property
+    def get_rate(self) :
+        return self.__rate
 
 class PlatinumMember(Member):
     DiscountRate = 0.10
@@ -425,9 +469,24 @@ class PlatinumMember(Member):
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, points=0):
         super().__init__(customer_id, name, phone_number, email, points)
 
+    @property
+    def get_tier(self) :
+        return self.__tier
+    
+    @property
+    def get_rate(self) :
+        return self.__rate
 
+class Coupon() :
+    def __init__(self,id) :
+        self.__coupon_id = id
+        self.__discount = 10
+
+    @property
+    def use_coupon(self) :
+        return self.__discount
+    
 # Employee Related Class
-
 
 class TimeSchedule:
     def __init__(self):
@@ -603,6 +662,83 @@ class Clinic:
                 return i
         return None
     
+    def check_member(self,customer) :
+        if isinstance(customer,Member) :
+            return True
+        else :
+            return False
+        
+    def check_payment_type(self,customer,payment_type,card_ID = None) :
+        payment_type = payment_type.lower()
+        if payment_type == "qrcode" :
+            ID = self.generate_ID()
+            method = QRCode(ID)
+        elif payment_type == "card" :
+            method = customer.search_card(card_ID)
+        return method
+        
+    def generate_ID(self) :
+        ID = uuid.uuid4().hex[:8]
+        return ID
+    
+    def sum_price_in_each_service(self,service_list) :
+        sum_price = 0
+        for service in service_list :
+            service.calculate_total_price()
+            price = service.price
+            sum_price += price
+        return sum_price
+    
+    def calculate_discount(self,customer,price) :
+        rate = customer.get_rate
+        discount = rate * price
+        return discount 
+    
+    def calculate_point(self,price) :
+        rate = 0.01
+        point = rate * price
+        point_int = math.floor(point)
+        return point_int
+    
+    def add_point (self,customer,price) :
+        if self.check_member(customer) :
+            point = self.calculate_point(price) 
+            customer.add_point(point)
+            return point
+        else :
+            return 0
+        
+    def create_coupon(self) :
+        id = self.generate_ID()
+        coupon = Coupon(id)
+        return coupon
+    
+    def point_to_coupon (self,customer_id) :
+        customer = self.search_customer(customer_id) 
+        if customer != None :
+            if self.check_member(customer) :
+                point = customer.point 
+                if point >= 50 :
+                    coupon = self.create_coupon()
+                    customer.add_coupon(coupon)
+                    customer.remove_point(50)
+                    return "Success"
+                else :
+                    return "Not enough point"
+            else :
+                return "Not Member"
+        else :
+            return "Not found customer"
+      
+    def get_coupon (self,customer) :
+        coupon = customer.get_coupon()
+        if coupon != None :
+            discount = coupon.use_coupon
+            customer.delete_coupon()
+            return discount
+        else : 
+            return "Not Have Coupon"
+    
     def calculate_total_price(self,customer,sum_price,use_cp) :
         member = self.check_member(customer)
         discount = 0
@@ -619,6 +755,17 @@ class Clinic:
         total_price = sum_price - discount
         return total_price
     
+    def pay(self,total_price,method,money=None) :
+        if method.get_payment_type == "qrcode" :
+            result = method.validate_money(total_price,money) 
+            if result == False :
+                return "Invalid money"
+        if method.get_payment_type == "card" :
+            result = method.validate_money(total_price)
+            if result == "not enough" :
+                return "Card not have enough money"
+        return "Success"
+    
     def create_service_and_pet_list(self,pet_list,service_list) :
         list_pet_and_service = []
         for pet in pet_list :
@@ -627,6 +774,49 @@ class Clinic:
                 service_list = service.get_service_list()
                 list_pet_and_service.append([pet.name, service_list])
         return list_pet_and_service
+    
+    def create_payment(self,customer_id,method,price,list_pet_and_service,today,point=0) :
+        payment_ID = self.generate_ID()
+        payment = Payment(customer_id,payment_ID,method,price,list_pet_and_service,today,point)
+        return payment.create_payment()
+    
+    def start_payment(self,customer_id,payment_type,card_ID=None,use_cp=False,money=None) :
+        customer = self.get_customer_info(customer_id)
+        
+        if (customer == None) :
+            return "Customer not found"
+        
+        pet_list = customer.pet
+        today = datetime.today()
+
+        service_list = []
+        for pet in pet_list :
+            service = pet.search_service(today)
+            service_list.append(service)
+        sum_price = self.sum_price_in_each_service(service_list)
+        
+        total_price = self.calculate_total_price(customer,sum_price,use_cp)
+        if total_price == "Not Have Coupon" :
+            return "Not Have Coupon"
+        elif total_price == "Not a member" :
+            return "Not a member"
+
+        method = self.check_payment_type(customer,payment_type,card_ID)
+        if method == None :
+            return "Invalid CardID"
+        
+        result = self.pay(total_price,method,money)
+        if result == "Invalid money" :
+            return "Invalid money"
+        elif result == "Card not have enough money" :
+            return "Card not have enough money"
+        
+        point = self.add_point(customer,total_price) 
+        list_pet_and_service = self.create_service_and_pet_list(pet_list,service_list)
+        payment = self.create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
+        customer.add_payment(payment)
+        return payment           
+
 
     def create_reservation(
         self,
