@@ -30,8 +30,9 @@ class ReservationRequest(BaseModel):
     pet_id: str
     service_type: str
     datetime_str: str
-    payment_method: Optional[str] = None
     room_type: Optional[str] = None
+    payment_method: Optional[str] = None
+    card_id: Optional[str] = None
 
 
 class Notification:
@@ -124,7 +125,7 @@ class Card(PaymentMethod):
 
 
 class QRCode(PaymentMethod):
-    def __init__(self):
+    def __init__(self,id):
         self.__payment_type = "qrcode"
         self.__total_money = 0
         self.__qrcodeID = id
@@ -668,11 +669,11 @@ class Clinic:
         else :
             return False
         
-    def check_payment_type(self,customer,payment_type,card_ID = None) :
+    def get_payment_method_object(self,customer,payment_type,card_ID = None) :
         payment_type = payment_type.lower()
         if payment_type == "qrcode" :
-            ID = self.generate_ID()
-            method = QRCode(ID)
+            id = self.generate_ID()
+            method = QRCode(id)
         elif payment_type == "card" :
             method = customer.search_card(card_ID)
         return method
@@ -729,7 +730,7 @@ class Clinic:
                 return "Not Member"
         else :
             return "Not found customer"
-      
+    
     def get_coupon (self,customer) :
         coupon = customer.get_coupon()
         if coupon != None :
@@ -791,7 +792,7 @@ class Clinic:
 
         service_list = []
         for pet in pet_list :
-            service = pet.search_service(today)
+            service = pet.search_unpaid_service()
             service_list.append(service)
         sum_price = self.sum_price_in_each_service(service_list)
         
@@ -801,7 +802,7 @@ class Clinic:
         elif total_price == "Not a member" :
             return "Not a member"
 
-        method = self.check_payment_type(customer,payment_type,card_ID)
+        method = self.get_payment_method_object(customer,payment_type,card_ID)
         if method == None :
             return "Invalid CardID"
         
@@ -824,8 +825,9 @@ class Clinic:
         pet_id,
         service_type,
         time,
-        payment_method=None,
         room_type=None,
+        payment_method=None,
+        card_id=None,
     ):
         resource = None
         price = 0
@@ -848,10 +850,14 @@ class Clinic:
                     "status": "fail",
                     "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
                 }
+            
             if payment_method.lower() == "card":
-                payment_obj = Card()
+                if not customer.card:
+                    return {"status": "fail", "message": "Customer has no card."}
+                if card_id == None:
+                    return {"status": "fail", "message": "Require CardID."}
             elif payment_method.lower() == "qrcode":
-                payment_obj = QRCode()
+                pass
             else:
                 return {"status": "fail", "message": "Invalid payment method"}
 
@@ -860,25 +866,41 @@ class Clinic:
                     if room.book_room(time):
                         resource = room
                         price = room.get_price
-                        if isinstance(payment_obj, Card):
-                            if customer.card:
-                                card_to_use = customer.card[0]
-                            else:
-                                return None
-                            pay_result = payment_obj.pay(
-                                price, payment_method, customer, card_to_use
-                            )
-
-                        elif isinstance(payment_obj, QRCode):
-                            pay_result = payment_obj.pay(price, payment_method)
-
+                        payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
+                        
+                        if payment_obj == None:
+                            room.busy_slot.remove(time)
+                            resource = None
+                            return {
+                                "status": "fail",
+                                "message": "CardID Not Found.",
+                            }
+                            
+                        pay_result = self.pay(price, payment_obj,price)
+                        
                         if pay_result != "Success":
-                            room._is_full = False
+                            room.busy_slot.remove(time)
                             resource = None
                             return {
                                 "status": "fail",
                                 "message": "Payment failed. Room reservation cancelled.",
                             }
+                            
+                        # Payment Record
+                        today = datetime.today()
+                        payment_ID = self.generate_ID()
+                        point = self.add_point(customer,price) 
+                        payment_record = Payment(
+                            customer_id=customer.id,
+                            payment_ID=payment_ID,
+                            method=payment_obj,
+                            price=price,
+                            service_list=[f"Pre-paid Hotel ({room.get_details()})"],
+                            date=today,
+                            point=point
+                        )
+                        customer.add_payment(payment_record)
+                        
                         break
                     else:
                         resource = None
@@ -987,8 +1009,9 @@ async def make_reservation(req: ReservationRequest):
         req.pet_id,
         req.service_type,
         req.datetime_str,
-        req.payment_method,
         req.room_type,
+        req.payment_method,
+        req.card_id
     )
     return result
 
@@ -1011,8 +1034,9 @@ if __name__ == "__main__":
 #   "pet_id": "P01",
 #   "service_type": "Hotel",
 #   "datetime_str": "2023-10-27 10:00",
-#   "payment_method": "qrcode"
-#   "room_type": "PrivateRoom"
+#   "room_type": "PrivateRoom",
+#   "payment_method": "qrcode",
+#   "card_id": ""
 # }
 # จอง Medical / Grooming (ไม่มี payment_method)
 # {
@@ -1020,12 +1044,4 @@ if __name__ == "__main__":
 #   "pet_id": "P01",
 #   "service_type": "Medical",
 #   "datetime_str": "2023-10-27 10:00"
-# }
-
-# {
-#   "customer_id": "C01",
-#   "pet_id": "P01",
-#   "service_type": "Admission",
-#   "datetime_str": "2026-02-23 12:40",
-#   "room_type": "PrivateRoom"
 # }
