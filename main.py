@@ -13,6 +13,13 @@ app = FastAPI()
 # Base Model
 
 
+class AdmitRequest(BaseModel):
+    doctor_id: str
+    pet_id: str
+    type_service: str = "Hotel"
+    time: str
+
+
 class TreatmentRequest(BaseModel):
     type_service: str
     owner_id: str
@@ -175,12 +182,7 @@ class Service:
         self.__date = date
         self.__sub_service = []
         self.__price = 0
-        self.__should_admit = False
         self.__is_paid = False
-
-    @property
-    def should_admit(self):
-        return self.__should_admit
 
     @property
     def is_paid(self):
@@ -190,8 +192,8 @@ class Service:
     def get_date(self):
         return self.__date
 
-    def mark_is_paid(self):
-        self.__is_paid = True
+    # def mark_is_paid(self):
+    #     self.__is_paid = True
 
     def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
@@ -566,15 +568,26 @@ class Doctor(Employee):
 
         return medical_service
 
-    # def start_pet_admit(self):
-    #     should_admit = self.check_should_admit()
-    #     if should_admit == True:
-    #         pass
-    #     else:
-    #         return {
-    #                 "status": "Admit is failed",
-    #                 "message": " ",
-    #             }
+    def start_pet_admit(self, pet_obj, clinic_obj, type, time):
+        should_admit = self.check_should_admit(pet_obj)
+        if should_admit == True:
+            result = clinic_obj.pet_admit(type, time, pet_obj)
+
+            if result == "Admit is complete":
+                return {
+                    "status": "Admit is complete",
+                    "message": "Successfully admitted",
+                }
+            else:  # no room
+                return {
+                    "status": "Admit is failed",
+                    "message": "No available rooms at the selected time",
+                }
+        else:
+            return {
+                "status": "Admit is failed",
+                "message": "Admission rejected",
+            }
 
 # Room
 
@@ -671,8 +684,15 @@ class Clinic:
         )
 
         p1.add_medical_record(medical_record)
-        # test api medical treatment
-        self.__medical_service.append(medical_record)
+
+        # # test api medical treatment (medical treatment ตอน get all)
+        # self.__medical_service.append(medical_record)
+
+        # สร้างกล่อง Service test api (admit)
+        dummy_big_service = Service(
+            p1.id, c1.name, datetime.now())
+        dummy_big_service.append_sub_service(medical_record)
+        p1.append_big_service(dummy_big_service)
 
     def get_pet_info(self, petID):
         for i in self.__pet:
@@ -834,11 +854,23 @@ class Clinic:
             all_med_service.append(med_service)
         return all_med_service
 
-    # def pet_admit(self, type, time, price, pet_obj):
-    #     for room in self.__rooms:
-    #         if room.book_room(time):
-    #             hotel_service = HotelService.create_hotel_service(type, room, time, price)
-    #             pet_obj.append_sub_service(hotel_service)
+    def pet_admit(self, type, time, pet_obj):
+        unpaid_service = pet_obj.search_unpaid_service()
+
+        # เช็คว่า medical treatment มารึยัง
+        if unpaid_service == None:
+            return "Medical record is not found"
+
+        for room in self.__rooms:
+            if room.book_room(time):
+                price = room.get_price
+                hotel_service = HotelService.create_hotel_service(
+                    type, room, time, price)
+
+                unpaid_service.append_sub_service(hotel_service)
+                return "Admit is complete"
+
+        return "No room available"
 
 
 # fast api
@@ -890,6 +922,21 @@ async def get_medical_treatments():
         "Data": clinic_sys.get_all_medical_record()
     }
 
+
+@app.post("/admit", tags=["Admit"])
+async def add_admit(data: AdmitRequest):
+    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+    pet_obj = clinic_sys.get_pet_info(data.pet_id)
+
+    if doctor_obj == None:
+        return "Doctor is not found"
+    if pet_obj == None:
+        return "Pet is not found"
+
+    result = doctor_obj.start_pet_admit(
+        pet_obj, clinic_sys, data.type_service, data.time)
+    return result
+
 # def main():
 #     print("Hello from oop-project-basecode!")
 
@@ -900,21 +947,3 @@ async def get_medical_treatments():
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1",
                 port=8000, log_level="info", reload=True)
-
-# {
-#   "type_service": "Medical",
-#   "owner_id": "C01",
-#   "doctor_id": "D01",
-#   "petID": "P01",
-#   "symptom": [
-#     "เมาแฟบ",
-#     "เบื่อแล้วชีวิตนี้",
-#     "ซึมเศร้าไม่ยอมกินข้าว"
-#   ],
-#   "medicine": [
-#     "ยาราไนก้า"
-#   ],
-#   "vaccine": [],
-#   "price": 1500.00,
-#   "should_admit": True
-# }
