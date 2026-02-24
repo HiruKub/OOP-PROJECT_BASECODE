@@ -13,11 +13,18 @@ app = FastAPI()
 # Base Model
 
 
+class AdmitRequest(BaseModel):
+    doctor_id: str
+    pet_id: str
+    type_service: str = "Hotel"
+    time: str
+
+
 class TreatmentRequest(BaseModel):
     type_service: str
     owner_id: str
     doctor_id: str
-    pet_name: str
+    petID: str
     symptom: list[str] = []
     medicine: list[str] = []
     vaccine: list[str] = []
@@ -90,7 +97,7 @@ class HotelReservation(Reservation):
 
 class PaymentMethod(ABC):
     @abstractmethod
-    def validate_money(self,total_price,money=None) :
+    def validate_money(self, total_price, money=None):
         pass
 
 
@@ -102,25 +109,32 @@ class Card(PaymentMethod):
         self.__payment_type = "card"
         self.__total_money = 0
 
-    def validate_money(self,total_price,money=None) :
-        if self.__total_money >= total_price :
+    def validate_money(self, total_price, money=None):
+        if self.__total_money >= total_price:
             self.__total_money -= total_price
             return "enough"
-        else :
+        else:
             return "not enough"
-        
-    def add_money_to_card(self,money) :
+
+    def add_money_to_card(self, money):
         self.__total_money += money
 
     @property
     def get_payment_type(self):
         return self.__payment_type
-    
+
     @property
-    def get_id (self) :
+    def get_id(self):
         return self.__cardID
-    
-    def deposit (self,money) :
+
+    def deposit(self, money):
+        self.__total_money += money
+
+    @property
+    def get_id(self):
+        return self.__cardID
+
+    def deposit(self, money):
         self.__total_money += money
 
 
@@ -130,10 +144,10 @@ class QRCode(PaymentMethod):
         self.__total_money = 0
         self.__qrcodeID = id
 
-    def validate_money(self,total_price,money) :
-        if money == total_price :
+    def validate_money(self, total_price, money):
+        if money == total_price:
             return True
-        else :
+        else:
             return False
 
     @property
@@ -141,8 +155,8 @@ class QRCode(PaymentMethod):
         return self.__payment_type
 
 
-class Payment :
-    def __init__(self,customer_id,payment_ID,method,price,service_list,date,point) :
+class Payment:
+    def __init__(self, customer_id, payment_ID, method, price, service_list, date, point):
         self.__customer_id = customer_id
         self.__payment_type = method.get_payment_type
         self.__price = price
@@ -152,23 +166,23 @@ class Payment :
         self.__point = point
         self.__payment_method = []
 
-    def create_payment(self) :
+    def create_payment(self):
         return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Pet_Service:{self.__service_list}-Date:{self.__date}-Point:{self.__point}"
 
 
 # Customer Related Class
 # Service CLass
 class Service:
-    def __init__(self, pet_name, owner_name, date):
-        self.__pet_name = pet_name
+    def __init__(self, petID, owner_name, date):
+        self.__petID = petID
         self.__owner = owner_name
         self.__date = date
-        self.__sub_services = []
+        self.__sub_service = []
         self.__price = 0
-        self.__is_paid = False
+        self.__is_paid = bool(False)
 
     @property
-    def price(self) :
+    def price(self):
         return self.__price
 
     @property
@@ -178,6 +192,13 @@ class Service:
     @property
     def is_paid(self):
         return self.__is_paid
+
+    @property
+    def is_paid(self):
+        return self.__is_paid
+
+    # def mark_is_paid(self):
+    #     self.__is_paid = True
 
     def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
@@ -197,37 +218,25 @@ class Service:
         return service_list
 
 
+class HotelService:
+    def __init__(self, room, time):
+        self.__type = "Hotel"
+        self.__room = room
+        self.__time = time
+        self.__price = 0
+
+    @property
+    def price(self):
+        return self.__price
+
+    @property
+    def type(self):
+        return self.__type
+
+
 class MedicalService:
     def __init__(
         self,
-        record_id,
-        type_service,
-        owner_obj,
-        doctor_obj,
-        pet_obj,
-        symptom,
-        良药苦口,
-        vaccine,
-        price,
-        should_admit
-    ):
-        self.__record_id = record_id
-        self.__type_service = type_service
-        self.__owner_obj = owner_obj
-        self.__doctor_obj = doctor_obj
-        self.__pet_obj = pet_obj
-        self.__symptom = symptom
-        self.__medicine = 良药苦口
-        self.__vaccine = vaccine
-        self.__price = price
-        self.__should_admit = should_admit
-
-    @property
-    def should_admit(self):
-        return self.__should_admit
-
-    @staticmethod
-    def create_medical_service(
         record_id,
         type_service,
         owner_obj,
@@ -239,27 +248,28 @@ class MedicalService:
         price,
         should_admit
     ):
-        medical_service = MedicalService(
-            record_id,
-            type_service,
-            owner_obj,
-            doctor_obj,
-            pet_obj,
-            symptom,
-            medicine,
-            vaccine,
-            price,
-            should_admit
-        )
-        return medical_service
+        self.__record_id = record_id
+        self.__type_service = type_service
+        self.__owner_obj = owner_obj
+        self.__doctor_obj = doctor_obj
+        self.__pet_obj = pet_obj
+        self.__symptom = symptom
+        self.__medicine = medicine
+        self.__vaccine = vaccine
+        self.__price = price
+        self.__should_admit = should_admit
+
+    @property
+    def should_admit(self):
+        return self.__should_admit
 
     def change_dict(self):
         return {
             "Id": self.__record_id,
             "Service": self.__type_service,
-            "Owner ID": self.__owner_obj.customer_id,
-            "Doctor": self.__doctor_obj.doctor_id,
-            "Pet": self.__pet_obj.pet_name,
+            "Owner ID": self.__owner_obj.id,
+            "Doctor": self.__doctor_obj.emp_id,
+            "Pet": self.__pet_obj.id,
             "Symptom": self.__symptom,
             "Medicine": self.__medicine,
             "Vaccine": self.__vaccine,
@@ -307,15 +317,8 @@ class Pet:
 
     def append_big_service(self, service):
         self.__service.append(service)
-    
-    # สร้างเผื่อว่าอนาคตอยากค้นหาประวัติการรักษาเฉพาะอันไหนขึ้นมา
-    def search_medical_record(self, record_id):
-        for record in self.__medical_record:
-            if str(record.change_dict()["Id"]) == str(record_id):
-                return record
-        return None
 
-    def get_last_medical_service(self):
+    def get_last_medical_service_should_admit(self):
         if not self.__medical_record:
             return False
         status = self.__medical_record[-1].should_admit
@@ -324,9 +327,11 @@ class Pet:
     def add_medical_record(self, medical_record):
         self.__medical_record.append(medical_record)
 
-    # def add_boarding_service(self, boarding_obj):
-    #     self.__service.append(boarding_obj)
-    #     return "Add complete"
+    def search_medical_record(self, record_id):
+        for record in self.__medical_record:
+            if str(record.change_dict()["Id"]) == str(record_id):
+                return record
+        return None
 
 
 class Customer:
@@ -354,13 +359,13 @@ class Customer:
     def add_card(self, card_id):
         self.__card.append(card_id)
 
-    def search_card(self,card_id) :
-        for card in self.__card :
-            if card.get_id == card_id :
+    def search_card(self, card_id):
+        for card in self.__card:
+            if card.get_id == card_id:
                 return card
         return None
 
-    def deposit_to_card(self,cardID,money) :
+    def deposit_to_card(self, cardID, money):
         card = self.search_card(cardID)
         card.deposit(money)
 
@@ -370,15 +375,6 @@ class Customer:
                 return True
         return False
 
-    def search_reservation(self,date) :
-        self.__pick_date = []
-        for item in self.__reservation :
-            if item.get_date.date() == date.date() :
-                self.__pick_date.append(item)
-        return self.__pick_date
-    
-    
-    
     @property
     def pet(self):
         return self.__pet
@@ -413,27 +409,28 @@ class Member(Customer):
         self.__points = points
         self.__coupon = []
 
-    @property 
-    def point(self) :
+    @property
+    def point(self):
         return self.__point
 
-    def add_point(self,point) :
+    def add_point(self, point):
         self.__point += point
 
-    def remove_point(self,point) :
+    def remove_point(self, point):
         self.__point -= point
 
-    def add_coupon(self,coupon) :
+    def add_coupon(self, coupon):
         self.__coupon.append(coupon)
 
-    def get_coupon(self) :
-        if self.__coupon :
+    def get_coupon(self):
+        if self.__coupon:
             return self.__coupon[0]
-        else :
+        else:
             return None
-    
-    def delete_coupon(self) :
+
+    def delete_coupon(self):
         self.__coupon.pop(0)
+
 
 class SilverMember(Member):
     DiscountRate = 0.05
@@ -442,12 +439,13 @@ class SilverMember(Member):
         super().__init__(customer_id, name, phone_number, email, points)
 
     @property
-    def get_tier(self) :
+    def get_tier(self):
         return self.__tier
-    
+
     @property
-    def get_rate(self) :
+    def get_rate(self):
         return self.__rate
+
 
 class GoldMember(Member):
     DiscountRate = 0.10
@@ -456,12 +454,13 @@ class GoldMember(Member):
         super().__init__(customer_id, name, phone_number, email, points)
 
     @property
-    def get_tier(self) :
+    def get_tier(self):
         return self.__tier
-    
+
     @property
-    def get_rate(self) :
+    def get_rate(self):
         return self.__rate
+
 
 class PlatinumMember(Member):
     DiscountRate = 0.10
@@ -470,23 +469,25 @@ class PlatinumMember(Member):
         super().__init__(customer_id, name, phone_number, email, points)
 
     @property
-    def get_tier(self) :
+    def get_tier(self):
         return self.__tier
-    
+
     @property
-    def get_rate(self) :
+    def get_rate(self):
         return self.__rate
 
-class Coupon() :
-    def __init__(self,id) :
+
+class Coupon():
+    def __init__(self, id):
         self.__coupon_id = id
         self.__discount = 10
 
     @property
-    def use_coupon(self) :
+    def use_coupon(self):
         return self.__discount
-    
+
 # Employee Related Class
+
 
 class TimeSchedule:
     def __init__(self):
@@ -520,6 +521,10 @@ class Employee:
     def name(self):
         return self.__name
 
+    @property
+    def emp_id(self):
+        return self.__employee_id
+
     def get_avaliable_work(self, time: str):
         return self.__workschedule.search_availability(time)
         pass
@@ -539,21 +544,85 @@ class Employee:
 class Doctor(Employee):
     Type = "Doctor"
 
-    def __init__(self, emp_id, name, speciality="General"):
+    def __init__(self, emp_id, name):
         super().__init__(emp_id, name)
-        self.__skill = speciality
+        self.__medical_service = []
 
     def check_should_admit(self, pet):
-        status = pet.get_last_medical_service()
+        status = pet.get_last_medical_service_should_admit()
         return status
 
-    def start_booking_hotel(self, pet, clinic, customer_id, pet_id, service_type, time, room_type):
-        should_admit = self.check_should_admit(pet)
-        if should_admit == True:
-            # กันไม่ให้ไปอยู่ payment
-            return clinic.create_reservation(customer_id, pet_id, service_type, time, room_type=room_type)
+    def start_medical_service(self, data: TreatmentRequest, clinic_obj):
+        customer = clinic_obj.get_customer_info(data.owner_id)
+        if customer == None:
+            return f"User is not found"
+
+        pet = clinic_obj.get_pet_info(data.petID)
+        if pet == None:
+            return f"Pet is not found"
+
+        symptom = data.symptom
+        medicine = data.medicine
+        vaccine = data.vaccine
+        price = data.price
+        should_admit = data.should_admit
+
+        record_id = str(uuid.uuid4())
+
+        medical_service = MedicalService(
+            record_id,
+            data.type_service,
+            customer,   # customer object
+            self,       # doctor object
+            pet,        # pet object
+            symptom,
+            medicine,
+            vaccine,
+            price,
+            should_admit
+        )
+
+        self.__medical_service.append(medical_service)  # keep at Doctor
+
+        unpaid_service = pet.search_unpaid_service()
+
+        # check unpaid service
+        if unpaid_service:
+            unpaid_service.append_sub_service(medical_service)
+
         else:
-            return False
+            new_big_service = Service(
+                pet.id, customer.name, datetime.now())  # สร้างกล่องใหญ่
+            new_big_service.append_sub_service(
+                medical_service)  # เพิ่ม sub service ลง
+
+            pet.append_big_service(new_big_service)
+
+            today = datetime.now()
+            self.start_pet_admit(pet, clinic_obj, today)
+
+        return medical_service
+
+    def start_pet_admit(self, pet_obj, clinic_obj, time):
+        should_admit = self.check_should_admit(pet_obj)
+        if should_admit == True:
+            result = clinic_obj.pet_admit(time, pet_obj)
+
+            if result == "Admit is complete":
+                return {
+                    "status": "Admit is complete",
+                    "message": "Successfully admitted",
+                }
+            else:  # no room
+                return {
+                    "status": "Admit is failed",
+                    "message": "No available rooms at the selected time",
+                }
+        else:
+            return {
+                "status": "Admit is failed",
+                "message": "Admission rejected",
+            }
 
 # Room
 
@@ -619,6 +688,7 @@ class Clinic:
         self.__grooming_history = []
         self.__medical_record = []
         self.__pet = []
+        self.__medical_service = []
         self.__notification = Notification()
         self._setup_dummy_data()
 
@@ -642,13 +712,22 @@ class Clinic:
             doctor_obj=Doctor("D01", "Dr.Strange"),
             pet_obj=p1,
             symptom=["เมาแฟบ", "เบื่อแล้วชีวิตนี้"],
-            良药苦口=["ยาม้า"],
+            medicine=["ยาม้า"],
             vaccine=[],
             price=1000000.0,
             should_admit=True
         )
 
         p1.add_medical_record(medical_record)
+
+        # # test api medical treatment (medical treatment ตอน get all)
+        # self.__medical_service.append(medical_record)
+
+        # สร้างกล่อง Service test api (admit)
+        dummy_big_service = Service(
+            p1.id, c1.name, datetime.now())
+        dummy_big_service.append_sub_service(medical_record)
+        p1.append_big_service(dummy_big_service)
 
     def get_pet_info(self, petID):
         for i in self.__pet:
@@ -661,11 +740,17 @@ class Clinic:
             if i.id == customer_id:
                 return i
         return None
-    
-    def check_member(self,customer) :
-        if isinstance(customer,Member) :
+
+    def get_doctor_info(self, doctor_id):
+        for d in self.__employee:
+            if d.emp_id == doctor_id:
+                return d
+        return None
+
+    def check_member(self, customer):
+        if isinstance(customer, Member):
             return True
-        else :
+        else:
             return False
         
     def get_payment_method_object(self,customer,payment_type,card_ID = None) :
@@ -676,116 +761,117 @@ class Clinic:
         elif payment_type == "card" :
             method = customer.search_card(card_ID)
         return method
-        
-    def generate_ID(self) :
+
+    def generate_ID(self):
         ID = uuid.uuid4().hex[:8]
         return ID
-    
-    def sum_price_in_each_service(self,service_list) :
+
+    def sum_price_in_each_service(self, service_list):
         sum_price = 0
-        for service in service_list :
+        for service in service_list:
             service.calculate_total_price()
             price = service.price
             sum_price += price
         return sum_price
-    
-    def calculate_discount(self,customer,price) :
+
+    def calculate_discount(self, customer, price):
         rate = customer.get_rate
         discount = rate * price
-        return discount 
-    
-    def calculate_point(self,price) :
+        return discount
+
+    def calculate_point(self, price):
         rate = 0.01
         point = rate * price
         point_int = math.floor(point)
         return point_int
-    
-    def add_point (self,customer,price) :
-        if self.check_member(customer) :
-            point = self.calculate_point(price) 
+
+    def add_point(self, customer, price):
+        if self.check_member(customer):
+            point = self.calculate_point(price)
             customer.add_point(point)
             return point
-        else :
+        else:
             return 0
-        
-    def create_coupon(self) :
+
+    def create_coupon(self):
         id = self.generate_ID()
         coupon = Coupon(id)
         return coupon
-    
-    def point_to_coupon (self,customer_id) :
-        customer = self.search_customer(customer_id) 
-        if customer != None :
-            if self.check_member(customer) :
-                point = customer.point 
-                if point >= 50 :
+
+    def point_to_coupon(self, customer_id):
+        customer = self.search_customer(customer_id)
+        if customer != None:
+            if self.check_member(customer):
+                point = customer.point
+                if point >= 50:
                     coupon = self.create_coupon()
                     customer.add_coupon(coupon)
                     customer.remove_point(50)
                     return "Success"
-                else :
+                else:
                     return "Not enough point"
-            else :
+            else:
                 return "Not Member"
-        else :
+        else:
             return "Not found customer"
-    
-    def get_coupon (self,customer) :
+
+    def get_coupon(self, customer):
         coupon = customer.get_coupon()
-        if coupon != None :
+        if coupon != None:
             discount = coupon.use_coupon
             customer.delete_coupon()
             return discount
-        else : 
+        else:
             return "Not Have Coupon"
-    
-    def calculate_total_price(self,customer,sum_price,use_cp) :
+
+    def calculate_total_price(self, customer, sum_price, use_cp):
         member = self.check_member(customer)
         discount = 0
-        if member == False :
-            if use_cp == True :
+        if member == False:
+            if use_cp == True:
                 return "Not a member"
-        elif member == True :
-            discount += self.calculate_discount(customer,sum_price)
-            if use_cp :
+        elif member == True:
+            discount += self.calculate_discount(customer, sum_price)
+            if use_cp:
                 coupon_discount = self.get_coupon(customer)
-                if coupon_discount == "Not Have Coupon" :
+                if coupon_discount == "Not Have Coupon":
                     return "Not Have Coupon"
                 discount += coupon_discount
         total_price = sum_price - discount
         return total_price
-    
-    def pay(self,total_price,method,money=None) :
-        if method.get_payment_type == "qrcode" :
-            result = method.validate_money(total_price,money) 
-            if result == False :
+
+    def pay(self, total_price, method, money=None):
+        if method.get_payment_type == "qrcode":
+            result = method.validate_money(total_price, money)
+            if result == False:
                 return "Invalid money"
-        if method.get_payment_type == "card" :
+        if method.get_payment_type == "card":
             result = method.validate_money(total_price)
-            if result == "not enough" :
+            if result == "not enough":
                 return "Card not have enough money"
         return "Success"
-    
-    def create_service_and_pet_list(self,pet_list,service_list) :
+
+    def create_service_and_pet_list(self, pet_list, service_list):
         list_pet_and_service = []
-        for pet in pet_list :
+        for pet in pet_list:
             service = pet.search_unpaid_service()
-            if service != None :
+            if service != None:
                 service_list = service.get_service_list()
                 list_pet_and_service.append([pet.name, service_list])
         return list_pet_and_service
-    
-    def create_payment(self,customer_id,method,price,list_pet_and_service,today,point=0) :
+
+    def create_payment(self, customer_id, method, price, list_pet_and_service, today, point=0):
         payment_ID = self.generate_ID()
-        payment = Payment(customer_id,payment_ID,method,price,list_pet_and_service,today,point)
+        payment = Payment(customer_id, payment_ID, method,
+                          price, list_pet_and_service, today, point)
         return payment.create_payment()
-    
-    def start_payment(self,customer_id,payment_type,card_ID=None,use_cp=False,money=None) :
+
+    def start_payment(self, customer_id, payment_type, card_ID=None, use_cp=False, money=None):
         customer = self.get_customer_info(customer_id)
-        
-        if (customer == None) :
+
+        if (customer == None):
             return "Customer not found"
-        
+
         pet_list = customer.pet
         today = datetime.today()
 
@@ -794,29 +880,74 @@ class Clinic:
             service = pet.search_unpaid_service()
             service_list.append(service)
         sum_price = self.sum_price_in_each_service(service_list)
-        
-        total_price = self.calculate_total_price(customer,sum_price,use_cp)
-        if total_price == "Not Have Coupon" :
+
+        total_price = self.calculate_total_price(customer, sum_price, use_cp)
+        if total_price == "Not Have Coupon":
             return "Not Have Coupon"
-        elif total_price == "Not a member" :
+        elif total_price == "Not a member":
             return "Not a member"
 
         method = self.get_payment_method_object(customer,payment_type,card_ID)
         if method == None :
             return "Invalid CardID"
-        
-        result = self.pay(total_price,method,money)
-        if result == "Invalid money" :
-            return "Invalid money"
-        elif result == "Card not have enough money" :
-            return "Card not have enough money"
-        
-        point = self.add_point(customer,total_price) 
-        list_pet_and_service = self.create_service_and_pet_list(pet_list,service_list)
-        payment = self.create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
-        customer.add_payment(payment)
-        return payment           
 
+        result = self.pay(total_price, method, money)
+        if result == "Invalid money":
+            return "Invalid money"
+        elif result == "Card not have enough money":
+            return "Card not have enough money"
+
+        point = self.add_point(customer, total_price)
+        list_pet_and_service = self.create_service_and_pet_list(
+            pet_list, service_list)
+        payment = self.create_payment(
+            customer_id, method, total_price, list_pet_and_service, today, point)
+        customer.add_payment(payment)
+        return payment
+
+    def create_payment(self, customer_id, method, price, list_pet_and_service, today, point=0):
+        payment_ID = self.generate_ID()
+        payment = Payment(customer_id, payment_ID, method,price, list_pet_and_service, today, point)
+        return payment.create_payment()
+
+    def start_payment(self, customer_id, payment_type, card_ID=None, use_cp=False, money=None):
+        customer = self.get_customer_info(customer_id)
+
+        if (customer == None):
+            return "Customer not found"
+
+        pet_list = customer.pet
+        today = datetime.today()
+
+        service_list = []
+        for pet in pet_list:
+            service = pet.search_service(today)
+            service_list.append(service)
+        sum_price = self.sum_price_in_each_service(service_list)
+
+        total_price = self.calculate_total_price(customer, sum_price, use_cp)
+        if total_price == "Not Have Coupon":
+            return "Not Have Coupon"
+        elif total_price == "Not a member":
+            return "Not a member"
+
+        method = self.check_payment_type(customer, payment_type, card_ID)
+        if method == None:
+            return "Invalid CardID"
+
+        result = self.pay(total_price, method, money)
+        if result == "Invalid money":
+            return "Invalid money"
+        elif result == "Card not have enough money":
+            return "Card not have enough money"
+
+        point = self.add_point(customer, total_price)
+        list_pet_and_service = self.create_service_and_pet_list(
+            pet_list, service_list)
+        payment = self.create_payment(
+            customer_id, method, total_price, list_pet_and_service, today, point)
+        customer.add_payment(payment)
+        return payment
 
     def create_reservation(
         self,
@@ -861,8 +992,8 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if room_type.lower() == room.room_type:
-                    if room.book_room(time):
+                if not room.is_full and room_type.lower() == room.room_type:
+                    if room.book_room():
                         resource = room
                         price = room.get_price
                         payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
@@ -901,23 +1032,6 @@ class Clinic:
                         customer.add_payment(payment_record)
                         
                         break
-                    else:
-                        resource = None
-
-        # อันนี้เพิ่มมาเป็นเฉพาะของหมอที่จองห้องให้ ไม่ได้เอา payment มาเกี่ยว
-        elif service_type == "Admission":
-            if not room_type:
-                return {
-                    "status": "fail",
-                    "massage": "Admission Required Room type PrivateRoom or ShareRoom",
-                }
-
-            for room in self.__rooms:
-                if room_type.lower() == room.room_type and room.check_availability(time):
-                    room.book_room(time)
-                    resource = room
-                    price = room.get_price
-                    break
 
         elif service_type == "Medical":
             for emp in self.__employee:
@@ -942,17 +1056,6 @@ class Clinic:
                     resource,
                     payment_method,
                 )
-
-            elif service_type == "Admission":
-                new_reservation = HotelReservation(
-                    reservation_id,
-                    customer,
-                    pet,
-                    time,
-                    resource,
-                    "Pay Later")
-
-                # pet.add_boarding_service(resource)
 
             elif service_type == "Medical":
                 new_reservation = MedicalReservation(
@@ -990,6 +1093,43 @@ class Clinic:
                 "message": f"No available resource for {service_type} at {time}",
             }
 
+    def medical_treatment(self, data: TreatmentRequest, doctor_obj):
+
+        medical_service = doctor_obj.start_medical_service(data, self)
+
+        if isinstance(medical_service, MedicalService):
+            self.__medical_service.append(
+                medical_service)  # keep at Clinic
+
+            return {"Status": "Success", "Data": medical_service.change_dict()}
+        else:
+            return {"Status": "Error", "Message": medical_service}
+
+    def get_all_medical_record(self):  # object -> dict
+        all_med_service = []
+        for med in self.__medical_service:
+            med_service = med.change_dict()
+            all_med_service.append(med_service)
+        return all_med_service
+
+    def pet_admit(self, time, pet_obj):
+        unpaid_service = pet_obj.search_unpaid_service()
+
+        # เช็คว่า medical treatment มารึยัง
+        if unpaid_service == None:
+            return "Medical record is not found"
+
+        for room in self.__rooms:
+            if room.book_room(time):
+                price = room.get_price
+                hotel_service = HotelService(room, time)
+
+                unpaid_service.append_sub_service(hotel_service)
+                return "Admit is complete"
+
+        return "No room available"
+
+
 # fast api
 
 
@@ -1012,6 +1152,47 @@ async def make_reservation(req: ReservationRequest):
         req.payment_method,
         req.card_id
     )
+    return result
+
+
+@app.post("/medical_treatment", tags=["Medical Treatment"])
+async def add_medical_treatment(data: TreatmentRequest):
+    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+    if not doctor_obj:
+        return "Doctor is not found"
+
+    medical_treatment = clinic_sys.medical_treatment(data, doctor_obj)
+
+    if medical_treatment["Status"] == "Success":
+        return {
+            "Message": "A medical treatment record has been added successfully!",
+            "Data": medical_treatment["Data"]
+        }
+    else:
+        return {
+            "Message": medical_treatment["Message"]
+        }
+
+
+@app.get("/medical_treatment", tags=["Medical Treatment"])
+async def get_medical_treatments():
+    return {
+        "Data": clinic_sys.get_all_medical_record()
+    }
+
+
+@app.post("/admit", tags=["Admit"])
+async def add_admit(data: AdmitRequest):
+    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+    pet_obj = clinic_sys.get_pet_info(data.pet_id)
+
+    if doctor_obj == None:
+        return "Doctor is not found"
+    if pet_obj == None:
+        return "Pet is not found"
+
+    result = doctor_obj.start_pet_admit(
+        pet_obj, clinic_sys, data.time)
     return result
 
 # def main():
