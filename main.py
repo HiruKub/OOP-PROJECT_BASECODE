@@ -119,9 +119,6 @@ class Card(PaymentMethod):
     @total_card_money.setter
     def total_card_money(self,money) :
         self.__total_money = money
-        
-    def add_money_to_card(self,money) :
-        self.__total_money += money
 
     @property
     def get_payment_type(self):
@@ -163,7 +160,7 @@ class Payment :
         self.__point = point
         self.__payment_method = []
 
-    def create_payment(self) :
+    def create_payment_slip(self) :
         return f"CustomerID:{self.__customer_id}-PaymentID:{self.__payment_id}-Type:{self.__payment_type}-Price:{self.__price}-Pet_Service:{self.__service_list}-Date:{self.__date}-Point:{self.__point}"
 
 
@@ -210,8 +207,8 @@ class Service:
 # ขอเพิ่ม Service คร่าวๆ ไว้ใช้ตอน Payment 
 
 class GroomingService :
-    def __init__(self,type_service,price) :
-        self.__type_service = type_service
+    def __init__(self,price) :
+        self.__type_service = "grooming"
         self.__price = price
 
     @property
@@ -222,12 +219,12 @@ class GroomingService :
     def type(self) :
         return self.__type_service
 
-class BoardingService :
-    def __init__(self,type_service,room,day,price) :
-        self.__type_service = type_service
+class HotelService :
+    def __init__(self,room,day,price) :
+        self.__type_service = "hotel"
         self.__room = room
         self.__day = day
-        self.__price = price
+        self.__price = 0
 
     @property
     def price(self) :
@@ -910,7 +907,7 @@ class Clinic:
             method.total_card_money = money - 50
         return "Success"
     
-    def create_service_and_pet_list(self,pet_list,service_list,today) :
+    def create_service_and_pet_list(self,pet_list,service_list) :
         list_pet_and_service = []
         for pet in pet_list :
             service = pet.search_unpaid_service()
@@ -922,7 +919,7 @@ class Clinic:
     def create_payment(self,customer_id,method,price,list_pet_and_service,today,point=0) :
         payment_ID = self.generate_ID()
         payment = Payment(customer_id,payment_ID,method,price,list_pet_and_service,today,point)
-        return payment.create_payment()
+        return payment
     
     def start_payment(self,customer_id,payment_type,card_ID=None,use_cp=False,money=None) :
         customer = self.get_customer_info(customer_id)
@@ -931,7 +928,6 @@ class Clinic:
             return "Customer not found"
         
         pet_list = customer.pet
-        today = datetime.today()
 
         service_list = []
         for pet in pet_list :
@@ -957,10 +953,12 @@ class Clinic:
             return "Card not have enough money"
         
         point = self.add_point(customer,total_price) 
-        list_pet_and_service = self.create_service_and_pet_list(pet_list,service_list,today)
+        list_pet_and_service = self.create_service_and_pet_list(pet_list,service_list)
+        today = datetime.today()
         payment = self.create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
         customer.add_payment(payment)
-        return payment           
+        payment_slip = payment.create_payment_slip()
+        return payment_slip        
 
 
     def create_reservation(
