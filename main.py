@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
 import uuid
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from datetime import datetime
 import math
 
@@ -87,7 +87,7 @@ class HotelReservation(Reservation):
 # Payment Class
 
 
-class PaymentMethod(abstractmethod):
+class PaymentMethod(ABC):
     @abstractmethod
     def validate_money(self,total_price,money=None) :
         pass
@@ -1002,6 +1002,25 @@ async def make_reservation(req: ReservationRequest):
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1",
                 port=8000, log_level="info", reload=True)
+
+# fastapi dev main.py
+
+# จอง Hotel (จ่ายผ่าน QRCode)
+# {
+#   "customer_id": "C01",
+#   "pet_id": "P01",
+#   "service_type": "Hotel",
+#   "datetime_str": "2023-10-27 10:00",
+#   "payment_method": "qrcode"
+#   "room_type": "PrivateRoom"
+# }
+# จอง Medical / Grooming (ไม่มี payment_method)
+# {
+#   "customer_id": "C01",
+#   "pet_id": "P01",
+#   "service_type": "Medical",
+#   "datetime_str": "2023-10-27 10:00"
+# }
 
 # {
 #   "customer_id": "C01",
