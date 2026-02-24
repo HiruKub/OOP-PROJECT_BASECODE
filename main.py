@@ -165,6 +165,7 @@ class Service:
         self.__date = date
         self.__sub_services = []
         self.__price = 0
+        self.__is_paid = False
 
     @property
     def price(self) :
@@ -173,6 +174,10 @@ class Service:
     @property
     def get_date(self):
         return self.__date
+    
+    @property
+    def is_paid(self):
+        return self.__is_paid
 
     def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
