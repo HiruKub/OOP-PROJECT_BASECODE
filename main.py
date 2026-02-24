@@ -740,6 +740,7 @@ class Clinic:
         self.record_service("golden","bam",today,"boarding",5000,"room1")
 
         self.record_service("husky","peem",today,"grooming",2000)
+        self.record_service("corgi","peem",today,"grooming",2000)
         self.record_service("husky","peem",today,"boarding",5000,"room1")
 
         self.add_point(Peem,12000)
