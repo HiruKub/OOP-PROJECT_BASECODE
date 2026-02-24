@@ -304,12 +304,6 @@ class Pet:
             if service.is_paid == False:
                 return service
         return None
-    
-    def search_service(self,date) :
-        for service in self.__service :
-            if service.get_date.date() == date.date() :
-                return service
-        return None
 
     def append_big_service(self, service):
         self.__service.append(service)
