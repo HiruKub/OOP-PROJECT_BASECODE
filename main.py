@@ -176,6 +176,7 @@ class Service:
         self.__date = date
         self.__sub_service = []
         self.__price = 0
+        self.__is_paid = False
 
     @property
     def price(self) :
@@ -184,6 +185,10 @@ class Service:
     @property
     def get_date(self):
         return self.__date
+    
+    @property
+    def is_paid(self) :
+        return self.__is_paid
 
     def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
@@ -350,12 +355,6 @@ class Pet:
                 return service
         return None
     
-    def search_service(self,date) :
-        for service in self.__service :
-            if service.get_date.date() == date.date() :
-                return service
-        return None
-
     def append_big_service(self, service):
         self.__service.append(service)
     
@@ -756,7 +755,7 @@ class Clinic:
         if pet == "Not found" :
             return "Not found"
         else :
-            big_service = pet.search_service(date)
+            big_service = pet.search_unpaid_service()
             create =False
             if big_service == None :
                 create = True
@@ -913,7 +912,7 @@ class Clinic:
     def create_service_and_pet_list(self,pet_list,service_list,today) :
         list_pet_and_service = []
         for pet in pet_list :
-            service = pet.search_service(today)
+            service = pet.search_unpaid_service()
             if service != None :
                 service_list = service.get_service_list()
                 list_pet_and_service.append([pet.name, service_list])
@@ -935,7 +934,7 @@ class Clinic:
 
         service_list = []
         for pet in pet_list :
-            service = pet.search_service(today)
+            service = pet.search_unpaid_service()
             if service is not None:
                 service_list.append(service)
         sum_price = self.sum_price_in_each_service(service_list)
@@ -1137,7 +1136,7 @@ async def make_reservation(req: ReservationRequest):
     )
     return result
 
-@app.post("/payment/{customer_id}") 
+@app.post("/payment/{customer_id}" , tags=["Payment"]) 
 def payment(customer_id : str ,req : PaymentRequest) :
     result = clinic_sys.start_payment(
         customer_id,
