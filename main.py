@@ -178,6 +178,7 @@ class Service:
         self.__date = date
         self.__sub_service = []
         self.__price = 0
+        self.__is_paid = bool(False)
 
     @property
     def price(self):
@@ -209,11 +210,11 @@ class Service:
 
 
 class HotelService:
-    def __init__(self, type, room, time, price):
-        self.__type = type
+    def __init__(self, room, time):
+        self.__type = "Hotel"
         self.__room = room
         self.__time = time
-        self.__price = price
+        self.__price = 0
 
     @property
     def price(self):
@@ -222,11 +223,6 @@ class HotelService:
     @property
     def type(self):
         return self.__type
-
-    @staticmethod
-    def create_hotel_service(type, room, day, price):
-        hotel_service = HotelService(type, room, day, price)
-        return hotel_service
 
 
 class MedicalService:
@@ -238,7 +234,7 @@ class MedicalService:
         doctor_obj,
         pet_obj,
         symptom,
-        良药苦口,
+        medicine,
         vaccine,
         price,
         should_admit
@@ -249,7 +245,7 @@ class MedicalService:
         self.__doctor_obj = doctor_obj
         self.__pet_obj = pet_obj
         self.__symptom = symptom
-        self.__medicine = 良药苦口
+        self.__medicine = medicine
         self.__vaccine = vaccine
         self.__price = price
         self.__should_admit = should_admit
@@ -257,33 +253,6 @@ class MedicalService:
     @property
     def should_admit(self):
         return self.__should_admit
-
-    @staticmethod
-    def create_medical_service(
-        record_id,
-        type_service,
-        owner_obj,
-        doctor_obj,
-        pet_obj,
-        symptom,
-        medicine,
-        vaccine,
-        price,
-        should_admit
-    ):
-        medical_service = MedicalService(
-            record_id,
-            type_service,
-            owner_obj,
-            doctor_obj,
-            pet_obj,
-            symptom,
-            medicine,
-            vaccine,
-            price,
-            should_admit
-        )
-        return medical_service
 
     def change_dict(self):
         return {
@@ -331,34 +300,16 @@ class Pet:
     def name(self):
         return self.__name
 
-    def search_service(self, date):
-        for service in self.__service:
-            if service.get_date.date() == date.date():
-                return service
-        return None
-
     def search_unpaid_service(self):
         for service in self.__service:
             if service.is_paid == False:
                 return service
         return None
 
-    def search_service(self, date):
-        for service in self.__service:
-            if service.get_date.date() == date.date():
-                return service
-        return None
-
-    def search_service(self, date):
-        for service in self.__service:
-            if service.get_date.date() == date.date():
-                return service
-        return None
-
     def append_big_service(self, service):
         self.__service.append(service)
 
-    def get_last_medical_service(self):
+    def get_last_medical_service_should_admit(self):
         if not self.__medical_record:
             return False
         status = self.__medical_record[-1].should_admit
@@ -589,7 +540,7 @@ class Doctor(Employee):
         self.__medical_service = []
 
     def check_should_admit(self, pet):
-        status = pet.get_last_medical_service()
+        status = pet.get_last_medical_service_should_admit()
         return status
 
     def start_medical_service(self, data: TreatmentRequest, clinic_obj):
@@ -609,7 +560,7 @@ class Doctor(Employee):
 
         record_id = str(uuid.uuid4())
 
-        medical_service = MedicalService.create_medical_service(
+        medical_service = MedicalService(
             record_id,
             data.type_service,
             customer,   # customer object
@@ -638,12 +589,15 @@ class Doctor(Employee):
 
             pet.append_big_service(new_big_service)
 
+            today = datetime.now()
+            self.start_pet_admit(pet, clinic_obj, today)
+
         return medical_service
 
-    def start_pet_admit(self, pet_obj, clinic_obj, type, time):
+    def start_pet_admit(self, pet_obj, clinic_obj, time):
         should_admit = self.check_should_admit(pet_obj)
         if should_admit == True:
-            result = clinic_obj.pet_admit(type, time, pet_obj)
+            result = clinic_obj.pet_admit(time, pet_obj)
 
             if result == "Admit is complete":
                 return {
@@ -1123,7 +1077,7 @@ class Clinic:
             all_med_service.append(med_service)
         return all_med_service
 
-    def pet_admit(self, type, time, pet_obj):
+    def pet_admit(self, time, pet_obj):
         unpaid_service = pet_obj.search_unpaid_service()
 
         # เช็คว่า medical treatment มารึยัง
@@ -1133,8 +1087,7 @@ class Clinic:
         for room in self.__rooms:
             if room.book_room(time):
                 price = room.get_price
-                hotel_service = HotelService.create_hotel_service(
-                    type, room, time, price)
+                hotel_service = HotelService(room, time)
 
                 unpaid_service.append_sub_service(hotel_service)
                 return "Admit is complete"
