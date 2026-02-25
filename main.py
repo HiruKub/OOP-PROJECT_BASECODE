@@ -173,7 +173,7 @@ class Service:
         self.__date = date
         self.__sub_service = []
         self.__price = 0
-        self.__is_paid = bool(False)
+        self.__is_paid = False
 
     @property
     def price(self) :
@@ -520,8 +520,9 @@ class PlatinumMember(Member):
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
         super().__init__(customer_id, name, phone_number, email, sign_up_date, "platinum", 0.1, point)
 
-class Coupon() :
-    def __init__(self,id) :
+
+class Coupon():
+    def __init__(self, id):
         self.__coupon_id = id
         self.__discount = 10
 
@@ -697,6 +698,84 @@ class Clinic:
 
         p1.add_medical_record(medical_record)
 
+        # ส่วนของ payment
+    
+        Bam = Customer("123445","bam","025687525","Bam@gmail.com")
+        Peem = GoldMember("123456","peem","0225556666","Peem@gmail.com" ,datetime(2025, 11, 11))
+        
+        Bam_Card = Card("Card123")
+        Peem_Card = Card("Card555")
+        
+        Bam.add_card(Bam_Card)
+        Bam.deposit_to_card("Card123",50000)
+        Peem.add_card(Peem_Card)
+        Peem.deposit_to_card("Card555",50000)
+        
+        self.add_customer(Bam)
+        self.add_customer(Peem)
+        
+        Golden = Pet("P02", "golden", "Dog", "Golden", 25, "123445")
+        Corgi  = Pet("P03", "corgi",  "Dog", "Corgi",  12, "123456")
+        Husky  = Pet("P04", "husky",  "Dog", "Husky",  20, "123456")
+        
+        self.add_pet(Golden)
+        self.add_pet(Corgi)
+        self.add_pet(Husky)
+
+        Bam.add_pet(Golden)
+        Peem.add_pet(Corgi)
+        Peem.add_pet(Husky)
+
+        today = datetime.now()
+
+        self.record_service("P02","123445","grooming",2000,today)
+        self.record_service("P02","123445","hotel",5000,today,today + timedelta(days=3),"R01")
+
+        self.record_service("P04","123456","grooming",2000,today)
+        self.record_service("P03","123456","grooming",2000,today)
+        self.record_service("P04","123456","hotel",5000,today,today + timedelta(days=3),"R01")
+
+        self.add_point(Peem,12000)
+        self.point_to_coupon("123456")
+        self.point_to_coupon("123456")
+        self.point_to_coupon("123456")
+        self.point_to_coupon("123456")
+        self.point_to_coupon("123456")
+        
+    # make service ในส่วน Grooming หรือ Boarding
+    def record_service(self,pet_id,customer_id,type,price,entry_date,exit_date=None,room_id=None) :
+        pet = self.get_pet_info(pet_id)
+        if pet == None :
+            return "Not found"
+        else :
+            big_service = pet.search_unpaid_service()
+            should_create_big_service = False
+            if big_service == None :
+                should_create_big_service = True
+                big_service = Service(pet_id,customer_id,entry_date)
+
+            if type == "grooming" :
+                grooming = GroomingService(price)
+                big_service.append_sub_service(grooming)
+
+            elif type == "hotel" :
+                room = None
+                for r in self.__rooms :
+                    if r.room_id == room_id :
+                        room = r
+
+                if room != None :
+                    hotel = HotelService(room,entry_date,exit_date,price)
+                    big_service.append_sub_service(hotel)
+
+        if(should_create_big_service) :
+            pet.append_big_service(big_service)
+
+    def add_pet (self,pet) :
+        self.__pet.append(pet)
+
+    def add_customer(self,customer) :
+        self.__customer.append(customer)
         # # test api medical treatment (medical treatment ตอน get all)
         # self.__medical_service.append(medical_record)
 
@@ -773,7 +852,7 @@ class Clinic:
         else :
             return False
         
-    def check_payment_type(self,customer,payment_type,card_ID = None) :
+    def get_payment_method_object(self,customer,payment_type,card_ID = None) :
         payment_type = payment_type.lower()
         if payment_type == "qrcode" :
             ID = self.generate_ID()
@@ -1101,6 +1180,16 @@ async def make_reservation(req: ReservationRequest):
     )
     return result
 
+@app.post("/payment/{customer_id}" , tags=["Payment"]) 
+def payment(customer_id : str ,req : PaymentRequest) :
+    result = clinic_sys.start_payment(
+        customer_id,
+        req.payment_type,
+        req.card_ID,
+        req.use_cp,
+        req.money
+    )
+    return (result)
 
 @app.post("/medical_treatment", tags=["Medical Treatment"])
 async def add_medical_treatment(data: TreatmentRequest):
