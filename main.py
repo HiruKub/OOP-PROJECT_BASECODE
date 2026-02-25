@@ -772,7 +772,7 @@ class Clinic:
         self.record_service("P03","123456","grooming",2000,today)
         self.record_service("P04","123456","hotel",5000,today,today + timedelta(days=3),"R01")
 
-        self.add_point(Peem,12000)
+        self.add_point(Peem,50000)
         self.point_to_coupon("123456")
         self.point_to_coupon("123456")
         self.point_to_coupon("123456")
@@ -882,6 +882,16 @@ class Clinic:
         id = self.generate_ID()
         coupon = Coupon(id)
         return coupon
+    
+    def show_all_point_in_member(self,customer_id) :
+        customer = self.get_customer_info(customer_id) 
+        if customer != None :
+            if self.check_member(customer) :
+                return customer.point
+            else :
+                return "Not Member"
+        else :
+            return "Not found customer"
     
     def point_to_coupon (self,customer_id) :
         customer = self.get_customer_info(customer_id) 
@@ -1251,6 +1261,7 @@ async def add_admit(data: AdmitRequest):
     result = doctor_obj.start_pet_admit(
         pet_obj, clinic_sys, data.time)
     return result
+
 @app.post("/payment/{customer_id}" , tags=["Payment"]) 
 def payment(customer_id : str ,req : PaymentRequest) :
     result = clinic_sys.start_payment(
@@ -1261,6 +1272,16 @@ def payment(customer_id : str ,req : PaymentRequest) :
         req.money
     )
     return (result)
+
+@app.get("/exchange_coupon", tags=["exchange coupon"])
+def show_all_point_in_account(customer_id : str) :
+    result = clinic_sys.show_all_point_in_member(customer_id)
+    return result
+
+@app.post("/exchange_coupon", tags=["exchange coupon"])
+def exchage_coupon(customer_id : str) :
+    result = clinic_sys.point_to_coupon(customer_id)
+    return result
 
 # def main():
 #     print("Hello from oop-project-basecode!")
