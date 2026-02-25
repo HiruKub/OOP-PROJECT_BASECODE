@@ -948,13 +948,13 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if room_type.lower() == room.room_type and room.book_room(time):
+                if room_type.lower() == room.room_type and room.book_room(time_start,time_end):
                     resource = room
                     price = room.get_price
                     payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
                     
                     if payment_obj == None:
-                        room.busy_slot.remove(time)
+                        room.busy_slot.remove(time_start,time)
                         resource = None
                         return {
                             "status": "fail",
