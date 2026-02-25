@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+    actor Staff
+    participant Clinic
+    participant Customer
+    participant Pet
+    participant Card
+
+    %% เพิ่มข้อมูลลูกค้า
+    Staff->>Clinic: add_customer(customer_id, name, call, email)
+    activate Clinic
+        Clinic->>Customer: <<create>> Customer(customer_id, name, call, email)
+        activate Customer
+            Customer-->>Clinic: return customer_obj
+        deactivate Customer
+        Clinic->>Clinic: append(customer_obj) เข้า list_customers
+        Clinic-->>Staff: return เพิ่มข้อมูลลูกค้าสำเร็จ
+    deactivate Clinic
+
+    %% เพิ่มข้อมูลสัตว์เลี้ยง
+    Staff->>Clinic: add_pet(petID, name, type, species, weight, customer_id, aggressive)
+    activate Clinic
+        Clinic->>Pet: <<create>> Pet(petID, name, type, species, weight, aggressive)
+        activate Pet
+            Pet-->>Clinic: return pet_obj
+        deactivate Pet
+        Clinic->>Customer: add_pet(pet_obj)
+        activate Customer
+            Customer-->>Clinic: return Success
+        deactivate Customer
+        Clinic-->>Staff: return เพิ่มสัตว์เลี้ยงสำเร็จ
+    deactivate Clinic
+
+    %% ข้อมูลการชำระเงิน
+    Staff->>Clinic: add_payment(customer_id, card_id)
+    activate Clinic
+        Clinic->>Card: <<create>> Card(card_id)
+        activate Card
+            Card-->>Clinic: return card_obj
+        deactivate Card
+        Clinic->>Customer: add_card(card_obj)
+        activate Customer
+            Customer-->>Clinic: return Success
+        deactivate Customer
+        Clinic-->>Staff: return เพิ่มช่องทางการชำระเงินสำเร็จ
+    deactivate Clinic
