@@ -1,0 +1,46 @@
+sequenceDiagram
+    actor Doctor
+    participant DoctorClass
+    participant Pet
+    participant Clinic
+    participant HotelService
+
+    Doctor->>+DoctorClass: start_pet_admit()
+
+    %% ดึง should_admit ที่อยู่ medical_record จาก Pet
+    DoctorClass->>+Pet: get_last_medical_service()
+    Pet-->>-DoctorClass: return status
+    
+    DoctorClass->>DoctorClass: check_should_admit(status)
+
+    alt should_admit == True
+        DoctorClass->>+Clinic: pet_admit(time, pet_obj)
+
+        loop check available room
+            Clinic->>+Room: check_availability(time)
+            Room-->>-Clinic: return is_available
+            
+            opt is_available == True
+                Clinic->>+Room: book_room(time)
+                Room-->>-Clinic: return True
+            end
+        end
+
+        alt have_room ==True
+            Clinic->>+HotelService: HotelService(room, time)
+            HotelService-->>-Clinic: return hotel_sevice
+
+            Clinic->>+Pet: append_hotel_service(hotel_sersvice)
+            Pet-->>-Clinic: return add complete
+
+        Clinic-->>DoctorClass: return Admit is complete
+        DoctorClass-->>Doctor: return Admit is complete
+
+        else have_room == False
+            Clinic-->>-DoctorClass: return No room available
+            DoctorClass-->>Doctor: return Admit is fail
+        end
+               
+    else should_admit == False
+        DoctorClass-->>-Doctor: return Admit is fail
+    end
