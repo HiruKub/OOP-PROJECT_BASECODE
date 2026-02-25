@@ -948,46 +948,45 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if room.check_availability(time_start,time_end) and room_type.lower() == room.room_type:
-                    if room.book_room(time):
-                        resource = room
-                        price = room.get_price
-                        payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
+                if room_type.lower() == room.room_type and room.book_room(time):
+                    resource = room
+                    price = room.get_price
+                    payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
+                    
+                    if payment_obj == None:
+                        room.busy_slot.remove(time)
+                        resource = None
+                        return {
+                            "status": "fail",
+                            "message": "CardID Not Found.",
+                        }
                         
-                        if payment_obj == None:
-                            room.busy_slot.remove(time)
-                            resource = None
-                            return {
-                                "status": "fail",
-                                "message": "CardID Not Found.",
-                            }
-                            
-                        pay_result = self.pay(price, payment_obj,price)
+                    pay_result = self.pay(price, payment_obj,price)
+                    
+                    if pay_result != "Success":
+                        room.busy_slot.remove(time)
+                        resource = None
+                        return {
+                            "status": "fail",
+                            "message": "Payment failed. Room reservation cancelled.",
+                        }
                         
-                        if pay_result != "Success":
-                            room.busy_slot.remove(time)
-                            resource = None
-                            return {
-                                "status": "fail",
-                                "message": "Payment failed. Room reservation cancelled.",
-                            }
-                            
-                        # Payment Record
-                        today = datetime.today()
-                        payment_ID = self.generate_ID()
-                        point = self.add_point(customer,price) 
-                        payment_record = Payment(
-                            customer_id=customer.id,
-                            payment_ID=payment_ID,
-                            method=payment_obj,
-                            price=price,
-                            service_list=[f"Pre-paid Hotel ({room.get_details()})"],
-                            date=today,
-                            point=point
-                        )
-                        customer.add_payment(payment_record)
-                        
-                        break
+                    # Payment Record
+                    today = datetime.today()
+                    payment_ID = self.generate_ID()
+                    point = self.add_point(customer,price) 
+                    payment_record = Payment(
+                        customer_id=customer.id,
+                        payment_ID=payment_ID,
+                        method=payment_obj,
+                        price=price,
+                        service_list=[f"Pre-paid Hotel ({room.get_details()})"],
+                        date=today,
+                        point=point
+                    )
+                    customer.add_payment(payment_record)
+                    
+                    break
 
         elif service_type == "Medical":
             for emp in self.__employee:
