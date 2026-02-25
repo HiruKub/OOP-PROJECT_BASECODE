@@ -3,7 +3,9 @@ config:
   look: neo
   theme: redux-dark-color
 ---
+
 sequenceDiagram
+    autonumber
     actor Customer
     participant Clinic
     participant CustomerClass
@@ -12,7 +14,6 @@ sequenceDiagram
     participant PaymentMethod
     participant Reservation
     participant Notification
-    autonumber
     
     Customer->>+Clinic: create_reservation(customer_id, pet_id, "Hotel", time, payment_method)
     
@@ -22,18 +23,17 @@ sequenceDiagram
     end
     
     loop search pet
-        Clinic ->>+ Pet: get_pet_info(pet_id)
-        Pet -->>- Clinic: return Pet
+        Clinic->>+Pet: get_pet_info(pet_id)
+        Pet-->>-Clinic: return Pet
     end
     
-    Clinic->>PaymentMethod: create payment_obj (Card or QRCode)
-
     Clinic->>+Room: is_full
-    Room-->>-Clinic: return False
+    Room-->>-Clinic: return False 
     Clinic->>+Room: book_room()
     Room-->>-Clinic: return True
     Clinic->>+Room: get_price
     Room-->>-Clinic: return price
+    Clinic->>PaymentMethod: create payment_obj (Card or QRCode)
 
     alt payment is Card
         Clinic->>+PaymentMethod: pay(price, payment_method, customer, card_to_use)
@@ -55,15 +55,17 @@ sequenceDiagram
 
         alt customer.email != None
             Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
-            Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification 
+            Notification-->>Customer: return Notification 
+            Notification-->>-Clinic: return True
         else customer.phone != None
             Clinic->>+Notification: send_confirmation("SMS", reservation_id)
-            Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification
+            Notification-->>Customer: return Notification
+            Notification-->>-Clinic: return True
         end
         
         Clinic-->>Customer: return {"status": "success", ...}
     else resource == None (ห้องเต็ม)
-        Clinic-->>-Customer: return {"status": "fail", ...}
+        Clinic-->>Customer: return {"status": "fail", ...}
     end
+    
+    deactivate Clinic

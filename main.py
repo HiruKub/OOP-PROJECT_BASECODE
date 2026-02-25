@@ -862,8 +862,7 @@ class Clinic:
 
     def create_payment(self, customer_id, method, price, list_pet_and_service, today, point=0):
         payment_ID = self.generate_ID()
-        payment = Payment(customer_id, payment_ID, method,
-                          price, list_pet_and_service, today, point)
+        payment = Payment(customer_id, payment_ID, method, price, list_pet_and_service, today, point)
         return payment.create_payment()
 
     def start_payment(self, customer_id, payment_type, card_ID=None, use_cp=False, money=None):
@@ -889,50 +888,6 @@ class Clinic:
 
         method = self.get_payment_method_object(customer,payment_type,card_ID)
         if method == None :
-            return "Invalid CardID"
-
-        result = self.pay(total_price, method, money)
-        if result == "Invalid money":
-            return "Invalid money"
-        elif result == "Card not have enough money":
-            return "Card not have enough money"
-
-        point = self.add_point(customer, total_price)
-        list_pet_and_service = self.create_service_and_pet_list(
-            pet_list, service_list)
-        payment = self.create_payment(
-            customer_id, method, total_price, list_pet_and_service, today, point)
-        customer.add_payment(payment)
-        return payment
-
-    def create_payment(self, customer_id, method, price, list_pet_and_service, today, point=0):
-        payment_ID = self.generate_ID()
-        payment = Payment(customer_id, payment_ID, method,price, list_pet_and_service, today, point)
-        return payment.create_payment()
-
-    def start_payment(self, customer_id, payment_type, card_ID=None, use_cp=False, money=None):
-        customer = self.get_customer_info(customer_id)
-
-        if (customer == None):
-            return "Customer not found"
-
-        pet_list = customer.pet
-        today = datetime.today()
-
-        service_list = []
-        for pet in pet_list:
-            service = pet.search_service(today)
-            service_list.append(service)
-        sum_price = self.sum_price_in_each_service(service_list)
-
-        total_price = self.calculate_total_price(customer, sum_price, use_cp)
-        if total_price == "Not Have Coupon":
-            return "Not Have Coupon"
-        elif total_price == "Not a member":
-            return "Not a member"
-
-        method = self.check_payment_type(customer, payment_type, card_ID)
-        if method == None:
             return "Invalid CardID"
 
         result = self.pay(total_price, method, money)
@@ -992,8 +947,8 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if not room.is_full and room_type.lower() == room.room_type:
-                    if room.book_room():
+                if room.check_availability(time) and room_type.lower() == room.room_type:
+                    if room.book_room(time):
                         resource = room
                         price = room.get_price
                         payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
