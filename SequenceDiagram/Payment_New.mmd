@@ -16,19 +16,22 @@ sequenceDiagram
 
         UI ->>+ Clinic : start_payment(customer_id,payment_type,money=None,card_ID=None,use_cp=False)
         loop search_customer
-            Clinic ->>+ Customer : Search_customer(customer_id)
+            Clinic ->>+ Customer : get_customer_info(customer_id)
             Customer -->>- Clinic : return Customer
         end
         alt customer not found 
             Clinic -->> UI : return Customer not found
         end
-        Clinic ->>+ Customer : get_pet()
-        Customer -->>- Clinic : return Pet_list
-        Clinic ->> Clinic : get_today()
+        Clinic ->>+ Customer : pet(getter)
+        Customer -->>- Clinic : return pet_list
+
         loop each pet in pet_list
             loop search service in pet
-                Clinic ->>+ Pet : search_service(today)
+                Clinic ->>+ Pet : search_unpaid_service()
                 Pet -->>- Clinic : return service 
+            end
+            alt service is not None
+                Clinic ->> Clinic : append in service_list
             end
         end
         loop for service in service_list
@@ -56,7 +59,7 @@ sequenceDiagram
             end
         end
         %% Service -->>- Clinic : return price
-        Clinic ->> Clinic : check_payment_type(payment_type)
+        Clinic ->> Clinic : get_payment_method_object(customer,payment_type,card_ID)
         alt payment_type == qrcode
             Clinic ->>+ PaymentMethod : <<create>>(id)
             PaymentMethod -->>- Clinic : return QRCode(PaymentMethod)
@@ -84,15 +87,22 @@ sequenceDiagram
             alt not enough
                 Clinic -->> UI : Card not have enough money
             end
+            Clinic ->>+ PaymentMethod : total_card_money(getter)
+            PaymentMethod -->>- Clinic : return total_card_money
+            Clinic ->>+ PaymentMethod : total_card_money(total_card_money - 50)(setter)
+            PaymentMethod -->>- Clinic : return success
         end
         alt is member(True)
             Clinic ->>+ Member : calculate_point(price)
             Member ->> Member : add_point()
             Member -->>- Clinic : return point
         end
+        Clinic ->> Clinic : create_service_and_pet_list(pet_list,service_list)
+        Clinic ->> Clinic : get_today()
         %% Service -->>- Clinic : return point
-        Clinic ->>+ Payment : create payment(customer_id,PaymentMethod,price,list_pet_and_service,today,point)
+        Clinic ->>+ Payment : create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
         Payment -->>- Clinic : return Payment
         Clinic ->>+ Customer : append Payment
         Customer -->>- Clinic : return success
-        Clinic -->>- UI : return Payment 
+        Clinic ->> Clinic : create_payment_slip()
+        Clinic -->>- UI : return payment_slip
