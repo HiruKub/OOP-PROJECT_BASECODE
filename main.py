@@ -12,6 +12,7 @@ app = FastAPI()
 
 # Base Model
 
+
 class AdmitRequest(BaseModel):
     doctor_id: str
     pet_id: str
@@ -806,35 +807,6 @@ class Clinic:
 
         if(should_create_big_service) :
             pet.append_big_service(big_service)
-        
-    # make service ในส่วน Grooming หรือ Boarding
-    def record_service(self,pet_id,customer_id,type,price,entry_date,exit_date=None,room_id=None) :
-        pet = self.get_pet_info(pet_id)
-        if pet == None :
-            return "Not found"
-        else :
-            big_service = pet.search_unpaid_service()
-            should_create_big_service = False
-            if big_service == None :
-                should_create_big_service = True
-                big_service = Service(pet_id,customer_id,entry_date)
-
-            if type == "grooming" :
-                grooming = GroomingService(price)
-                big_service.append_sub_service(grooming)
-
-            elif type == "hotel" :
-                room = None
-                for r in self.__rooms :
-                    if r.room_id == room_id :
-                        room = r
-
-                if room != None :
-                    hotel = HotelService(room,entry_date,exit_date,price)
-                    big_service.append_sub_service(hotel)
-
-        if(should_create_big_service) :
-            pet.append_big_service(big_service)
 
     def add_pet (self,pet) :
         self.__pet.append(pet)
@@ -1004,13 +976,13 @@ class Clinic:
         method = self.get_payment_method_object(customer,payment_type,card_ID)
         if method == None :
             return "Invalid CardID"
-        
+
         result = self.pay(total_price,method,money)
         if result == "Invalid money" :
             return "Invalid money"
         elif result == "Card not have enough money" :
             return "Card not have enough money"
-        
+
         point = self.add_point(customer,total_price) 
         list_pet_and_service = self.create_service_and_pet_list(pet_list,service_list)
         today = datetime.today()
