@@ -650,8 +650,8 @@ class Room:
     def room_type(self):
         return self.__room_type
 
-    def check_availability(self, time: str):
-        if time not in self.__busy_slot:
+    def check_availability(self, time_start: str, time_end: Optional[str] = None):
+        if time_start and time_end not in self.__busy_slot:
             return True
         return False
 
@@ -909,7 +909,8 @@ class Clinic:
         customer_id,
         pet_id,
         service_type,
-        time,
+        time_start,
+        time_end=None,
         room_type=None,
         payment_method=None,
         card_id=None,
@@ -947,7 +948,7 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             for room in self.__rooms:
-                if room.check_availability(time) and room_type.lower() == room.room_type:
+                if room.check_availability(time_start,time_end) and room_type.lower() == room.room_type:
                     if room.book_room(time):
                         resource = room
                         price = room.get_price
