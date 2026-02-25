@@ -461,22 +461,22 @@ class Member(Customer):
         self.__coupon.pop(0)
 
 class SilverMember(Member):
+    DiscountRate = 0.01
+
+    def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "silver", self.DiscountRate, point)
+
+class GoldMember(Member):
     DiscountRate = 0.05
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, "silver", 0.01, point)
-
-class GoldMember(Member):
-    DiscountRate = 0.10
-
-    def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, "gold", 0.05, point)
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "gold", self.DiscountRate, point)
 
 class PlatinumMember(Member):
-    DiscountRate = 0.10
+    DiscountRate = 0.1
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, point=0):
-        super().__init__(customer_id, name, phone_number, email, sign_up_date, "platinum", 0.1, point)
+        super().__init__(customer_id, name, phone_number, email, sign_up_date, "platinum", self.DiscountRate, point)
 
 
 class Coupon():
@@ -1261,17 +1261,6 @@ async def add_admit(data: AdmitRequest):
     result = doctor_obj.start_pet_admit(
         pet_obj, clinic_sys, data.time)
     return result
-
-@app.post("/payment/{customer_id}" , tags=["Payment"]) 
-def payment(customer_id : str ,req : PaymentRequest) :
-    result = clinic_sys.start_payment(
-        customer_id,
-        req.payment_type,
-        req.card_ID,
-        req.use_cp,
-        req.money
-    )
-    return (result)
 
 @app.get("/exchange_coupon", tags=["exchange coupon"])
 def show_all_point_in_account(customer_id : str) :
