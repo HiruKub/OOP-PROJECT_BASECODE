@@ -15,7 +15,7 @@ sequenceDiagram
         alt found
             Doctor-->>Clinic: return Doctor Object
         else not found
-            Doctor-->>-Clinic: return Doctor is not found
+            Doctor-->>-Clinic: return doctor is not found
         end
     end
 
@@ -24,9 +24,9 @@ sequenceDiagram
     loop search customer
         Clinic->>+Customer: get_customer_info(customer_id)
         alt found
-            Customer-->>Clinic: return Doctor Object
+            Customer-->>Clinic: return Customer Object
         else not found
-            Customer-->>-Clinic: return Doctor is not found
+            Customer-->>-Clinic: return customer is not found
         end
     end
     
