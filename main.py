@@ -547,22 +547,18 @@ class Doctor(Employee):
         status = pet.get_last_medical_service_should_admit()
         return status
 
-    def start_medical_service(self, data: TreatmentRequest, clinic_obj):
-        customer = clinic_obj.get_customer_info(data.owner_id)
-        if customer == None:
-            return f"User is not found"
+    def create_medical_service(self, data: TreatmentRequest, clinic_obj):
 
+        customer = clinic_obj.get_customer_info(data.owner_id)
         pet = clinic_obj.get_pet_info(data.petID)
-        if pet == None:
-            return f"Pet is not found"
+
+        record_id = clinic_obj.generate_ID()
 
         symptom = data.symptom
         medicine = data.medicine
         vaccine = data.vaccine
         price = data.price
         should_admit = data.should_admit
-
-        record_id = str(uuid.uuid4())
 
         medical_service = MedicalService(
             record_id,
@@ -577,24 +573,7 @@ class Doctor(Employee):
             should_admit
         )
 
-        self.__medical_service.append(medical_service)  # keep at Doctor
-
-        unpaid_service = pet.search_unpaid_service()
-
-        # check unpaid service
-        if unpaid_service:
-            unpaid_service.append_sub_service(medical_service)
-
-        else:
-            new_big_service = Service(
-                pet.id, customer.name, datetime.now())  # สร้างกล่องใหญ่
-            new_big_service.append_sub_service(
-                medical_service)  # เพิ่ม sub service ลง
-
-            pet.append_big_service(new_big_service)
-
-            today = datetime.now()
-            self.start_pet_admit(pet, clinic_obj, today)
+        self.__medical_service.append(medical_service)
 
         return medical_service
 
@@ -1068,9 +1047,33 @@ class Clinic:
                 "message": f"No available resource for {service_type} at {time}",
             }
 
-    def medical_treatment(self, data: TreatmentRequest, doctor_obj):
+    def medical_treatment(self, data: TreatmentRequest):
+        doctor = self.get_doctor_info(data.doctor_id)
+        customer = self.get_customer_info(data.owner_id)
+        pet = self.get_pet_info(data.petID)
 
-        medical_service = doctor_obj.start_medical_service(data, self)
+        if doctor == None:
+            return {"Status": "Error", "Message": "Doctor is not found"}
+        if customer == None:
+            return {"Status": "Error", "Message": "Customer is not found"}
+        if pet == None:
+            return {"Status": "Error", "Message": "Pet is not found"}
+
+        medical_service = doctor.create_medical_service(data, self)
+
+        unpaid_service = pet.search_unpaid_service()
+
+        # check unpaid service
+        if unpaid_service:
+            unpaid_service.append_sub_service(medical_service)
+
+        else:
+            new_big_service = Service(
+                pet.id, customer.name, datetime.now())  # สร้างกล่องใหญ่
+            new_big_service.append_sub_service(
+                medical_service)  # เพิ่ม sub service ลง
+
+            pet.append_big_service(new_big_service)
 
         if isinstance(medical_service, MedicalService):
             self.__medical_service.append(
@@ -1131,11 +1134,8 @@ async def make_reservation(req: ReservationRequest):
 
 @app.post("/medical_treatment", tags=["Medical Treatment"])
 async def add_medical_treatment(data: TreatmentRequest):
-    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
-    if not doctor_obj:
-        return "Doctor is not found"
 
-    medical_treatment = clinic_sys.medical_treatment(data, doctor_obj)
+    medical_treatment = clinic_sys.medical_treatment(data)
 
     if medical_treatment["Status"] == "Success":
         return {
@@ -1155,19 +1155,19 @@ async def get_medical_treatments():
     }
 
 
-@app.post("/admit", tags=["Admit"])
-async def add_admit(data: AdmitRequest):
-    doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
-    pet_obj = clinic_sys.get_pet_info(data.pet_id)
+# @app.post("/admit", tags=["Admit"])
+# async def add_admit(data: AdmitRequest):
+#     doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
+#     pet_obj = clinic_sys.get_pet_info(data.pet_id)
 
-    if doctor_obj == None:
-        return "Doctor is not found"
-    if pet_obj == None:
-        return "Pet is not found"
+#     if doctor_obj == None:
+#         return "Doctor is not found"
+#     if pet_obj == None:
+#         return "Pet is not found"
 
-    result = doctor_obj.start_pet_admit(
-        pet_obj, clinic_sys, data.time)
-    return result
+#     result = doctor_obj.start_pet_admit(
+#         pet_obj, clinic_sys, data.time)
+#     return result
 
 # def main():
 #     print("Hello from oop-project-basecode!")
