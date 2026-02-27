@@ -30,7 +30,7 @@ sequenceDiagram
     alt resource != None
         Clinic->>+HotelService: create_hotel_service()
         HotelService -->>- Clinic: return create complete
-        Clinic->>+Pet: append_pet()
+        Clinic->>+Pet: append_hotel_service_pet()
         Pet-->>-Clinic: return add complete
         Clinic-->>Doctor: return status: success
     else resource == None
