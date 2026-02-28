@@ -125,14 +125,14 @@ class Card(PaymentMethod):
 
     @property
     def get_id(self):
-        return self.__cardID
+        return self.__card_id
 
     def deposit(self, money):
         self.__total_money += money
 
     @property
     def get_id(self):
-        return self.__cardID
+        return self.__card_id
 
     def deposit(self, money):
         self.__total_money += money
@@ -700,7 +700,8 @@ class Clinic:
         c1 = Customer("C01", "Pingtale", "0999999999", "pingtale@email.com")
         p1 = Pet("P01", "Niggy", "Dog", "Golden", 25, "C01")
         c1.add_pet(p1)
-        c1.add_card("1234-5678")
+        c1.add_card(Card("1234-5678"))
+        c1.deposit_to_card("1234-5678",50000)
         self.__customer.append(c1)
         self.__pet = [p1]
 

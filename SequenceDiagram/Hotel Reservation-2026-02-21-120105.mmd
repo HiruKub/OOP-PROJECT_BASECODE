@@ -15,6 +15,7 @@ sequenceDiagram
     participant Payment
     participant Reservation
     participant Notification
+    participant TimeSc
     
     Customer->>+Clinic: create_reservation(customer_id, pet_id, "Hotel", time, room_type, payment_method)
     
@@ -29,8 +30,12 @@ sequenceDiagram
     end
     loop search same room_type and available room
         Clinic->>+Room: check_availability(time)
+        Room->>+TimeSc: check_available_slot
+        TimeSc-->>-Room: return True
         Room-->>-Clinic: return True 
         Clinic->>+Room: book_room(time)
+        Room->>+TimeSc: update_busy_slot
+        TimeSc-->>-Room: return succes
         Room-->>-Clinic: return True
         Clinic->>+Room: get_price
         Room-->>-Clinic: return price
@@ -54,18 +59,23 @@ sequenceDiagram
         
         Clinic->>Clinic: add_point(customer, price)
         Clinic->>Payment: create Payment(...)
+        Payment-->>Clinic: return Payment
         Clinic->>CustomerClass: add_payment(payment_record)
+        CustomerClass-->>Clinic: return succes
 
         Clinic->>Reservation: create HotelReservation()
+        Reservation-->>Clinic: Return Succes
         Clinic->>Clinic: __reservation.append(new_reservation)
         Clinic->>CustomerClass: add_reservation(new_reservation)
-
+        CustomerClass-->>Clinic: return succes
+        Clinic->>CustomerClass: get_email
+        CustomerClass-->>Clinic: return Email
         alt customer.email != None
-            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
-            Notification-->>Customer: return Notification 
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation)
+            Notification-->>Customer: return Reservation Secces
             Notification-->>-Clinic: return True
         else customer.phone != None
-            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
+            Clinic->>+Notification: send_confirmation("SMS", reservation)
             Notification-->>Customer: return Notification
             Notification-->>-Clinic: return True
         end
