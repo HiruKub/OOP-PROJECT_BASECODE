@@ -15,9 +15,8 @@ app = FastAPI()
 
 class AdmitRequest(BaseModel):
     doctor_id: str
-    pet_id: str
+    petID: str
     type_service: str = "Hotel"
-    time: str
 
 
 class TreatmentRequest(BaseModel):
@@ -285,8 +284,7 @@ class Pet:
         self.__weight = weight
         self.__customer_id = customer_id
         self.__service = []
-        self.__medical_record = []  # คิดว่าไง ต้องมีไหมเพราะวนใน serviceใหญ่แล้วดึงมาได้นะ
-        self.__aggressive = bool(aggressive)
+        self.__medical_record = []
 
     @property
     def vaccine(self):
@@ -327,6 +325,9 @@ class Pet:
             if str(record.change_dict()["Id"]) == str(record_id):
                 return record
         return None
+
+    def append_hotel_service_to_pet(self, hotel_service):
+        pass
 
 
 class Customer:
@@ -522,7 +523,6 @@ class Employee:
 
     def get_avaliable_work(self, time: str):
         return self.__workschedule.search_availability(time)
-        pass
 
     def update_timeslot(self, time: str):
         return self.__workschedule.update_schedule(time)
@@ -576,27 +576,6 @@ class Doctor(Employee):
         self.__medical_service.append(medical_service)
 
         return medical_service
-
-    def start_pet_admit(self, pet_obj, clinic_obj, time):
-        should_admit = self.check_should_admit(pet_obj)
-        if should_admit == True:
-            result = clinic_obj.pet_admit(time, pet_obj)
-
-            if result == "Admit is complete":
-                return {
-                    "status": "Admit is complete",
-                    "message": "Successfully admitted",
-                }
-            else:  # no room
-                return {
-                    "status": "Admit is failed",
-                    "message": "No available rooms at the selected time",
-                }
-        else:
-            return {
-                "status": "Admit is failed",
-                "message": "Admission rejected",
-            }
 
 # Room
 
@@ -660,7 +639,6 @@ class Clinic:
         self.__customer_payment = []
         self.__reservation = []
         self.__grooming_history = []
-        self.__medical_record = []
         self.__pet = []
         self.__medical_service = []
         self.__notification = Notification()
@@ -1075,6 +1053,14 @@ class Clinic:
 
             pet.append_big_service(new_big_service)
 
+        if medical_service.should_admit == True:
+            admit_data = AdmitRequest(
+                doctor_id=data.doctor_id,
+                petID=data.petID,
+                type_service="Hotel",
+            )
+            self.start_pet_admit(admit_data)
+
         if isinstance(medical_service, MedicalService):
             self.__medical_service.append(
                 medical_service)  # keep at Clinic
@@ -1090,22 +1076,41 @@ class Clinic:
             all_med_service.append(med_service)
         return all_med_service
 
-    def pet_admit(self, time, pet_obj):
-        unpaid_service = pet_obj.search_unpaid_service()
+    def start_pet_admit(self, data: AdmitRequest):
+        pet = self.get_pet_info(data.petID)
+        if pet == None:
+            return {"Status": "Error", "Message": "Pet is not found"}
 
-        # เช็คว่า medical treatment มารึยัง
-        if unpaid_service == None:
-            return "Medical record is not found"
+        resource = None
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         for room in self.__rooms:
-            if room.book_room(time):
-                price = room.get_price
-                hotel_service = HotelService(room, time)
+            if room.room_type == "privateroom":
+                if room.book_room(current_time):
+                    resource = room
+                    break
 
+        if resource:
+            hotel_service = HotelService(resource, current_time)
+            unpaid_service = pet.search_unpaid_service()
+
+            if unpaid_service:
                 unpaid_service.append_sub_service(hotel_service)
-                return "Admit is complete"
+                return {
+                    "status": "Admit is complete",
+                    "message": "Successfully admitted",
+                }
+            else:
+                return {
+                    "status": "Admit is failed",
+                    "message": "No active medical service session found for this pet"
+                }
 
-        return "No room available"
+        else:
+            return {
+                "status": "Admit is failed",
+                "message": "No private room available at the selected time"
+            }
 
 
 # fast api
@@ -1155,19 +1160,11 @@ async def get_medical_treatments():
     }
 
 
-# @app.post("/admit", tags=["Admit"])
-# async def add_admit(data: AdmitRequest):
-#     doctor_obj = clinic_sys.get_doctor_info(data.doctor_id)
-#     pet_obj = clinic_sys.get_pet_info(data.pet_id)
+@app.post("/admit", tags=["Admit"])
+async def add_admit(data: AdmitRequest):
+    admit = clinic_sys.start_pet_admit(data)
+    return admit
 
-#     if doctor_obj == None:
-#         return "Doctor is not found"
-#     if pet_obj == None:
-#         return "Pet is not found"
-
-#     result = doctor_obj.start_pet_admit(
-#         pet_obj, clinic_sys, data.time)
-#     return result
 
 # def main():
 #     print("Hello from oop-project-basecode!")
