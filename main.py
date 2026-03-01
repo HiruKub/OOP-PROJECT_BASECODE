@@ -79,10 +79,10 @@ class MedicalReservation(Reservation):
 
 
 class HotelReservation(Reservation):
-    def __init__(self, reservation_id, customer, pet, time, room, payment):
-        super().__init__(reservation_id, customer, pet, time)
+    def __init__(self, reservation_id, customer, pet, time_start,time_end, room, total_price, payment):
+        super().__init__(reservation_id, customer, pet, time_start)
         self.room = room
-        self.price = room.get_price
+        self.price = total_price
         self.payment = payment
 
     @property
@@ -978,13 +978,18 @@ class Clinic:
             else:
                 return {"status": "fail", "message": "Invalid payment method"}
             
-            original_time_duration = start_dt - end_dt
+            original_time_duration = end_dt - start_dt
             staying_time =  max(1, original_time_duration.days)
             
             for room in self.__rooms:
                 if room_type.lower() == room.room_type and room.book_room(start_dt,end_dt):
                     resource = room
                     price = room.get_price * staying_time
+                    
+                    # print(f"days {original_time_duration.days}")
+                    # print(f"staying time {staying_time}")
+                    # print(f"price {price}")
+                    
                     payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
                     
                     if payment_obj == None:
@@ -1019,9 +1024,9 @@ class Clinic:
                         point=point
                     )
                     customer.add_payment(payment_record)
-                    
                     break
-
+        
+        
         elif service_type == "Medical":
             for emp in self.__employee:
                 if emp.Type == "Doctor" and emp.get_avaliable_work(time_start):
@@ -1044,6 +1049,7 @@ class Clinic:
                     start_dt.date(),
                     end_dt.date(),
                     resource,
+                    price,
                     payment_method,
                 )
 
@@ -1081,7 +1087,7 @@ class Clinic:
         else:
             return {
                 "status": "fail",
-                "message": f"No available resource for {service_type} at {time_start}",
+                "message": f"No available resource for {service_type} at {start_dt}",
             }
 
     def medical_treatment(self, data: TreatmentRequest, doctor_obj):
@@ -1139,6 +1145,7 @@ async def make_reservation(req: ReservationRequest):
         req.pet_id,
         req.service_type,
         req.datetime_start_str,
+        req.datetime_end_str,
         req.room_type,
         req.payment_method,
         req.card_id
