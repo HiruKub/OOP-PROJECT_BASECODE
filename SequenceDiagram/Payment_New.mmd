@@ -28,17 +28,20 @@ sequenceDiagram
         loop each pet in pet_list
             loop search service in pet
                 Clinic ->>+ Pet : search_unpaid_service()
-                Pet -->>- Clinic : return service 
+                Pet ->>+ Service : is_paid()
+                Service -->>- Pet : return True / False
+                alt is_paid == True
+                    Pet -->>- Clinic : return service 
+                end
             end
             alt service is not None
                 Clinic ->> Clinic : append in service_list
             end
         end
         loop for service in service_list
-            Clinic ->>+ Service : sum_price_in_each_service(service_list)
+            Clinic ->>+ Service : sum_price_in_each_service()
             Service -->>- Clinic : return sum_price
         end
-        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
         Clinic ->>+ Member : check_member(customer)
         Member -->>- Clinic : return result(True/False)
         alt is member(False)
@@ -66,7 +69,13 @@ sequenceDiagram
         else payment_type == card
             loop search card
                 Clinic ->>+ Customer : search_card(card_ID)
-                Customer -->>- Clinic : return Card(PaymentMethod)
+                Customer ->>+ PaymentMethod : getter(id)
+                PaymentMethod -->>- Customer : return card_id
+                alt correct card_id
+                    Customer -->> Clinic : return Card(PaymentMethod)
+                else 
+                    Customer -->>- Clinic : return None
+                end
             end
             alt Card == None
                 Clinic -->> UI : return Invalid CardID
@@ -74,6 +83,7 @@ sequenceDiagram
         end
         %% Clinic ->>+ PaymentMethod : check_payment_type(payment_type)
         %% PaymentMethod -->>- Clinic : return PaymentMethod
+        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
         Clinic ->> Clinic : pay(price,PaymentMethod,money=None)  
         alt PaymentMethod == QRCode 
             Clinic ->>+ PaymentMethod : validate_money(money,price)
@@ -104,5 +114,6 @@ sequenceDiagram
         Payment -->>- Clinic : return Payment
         Clinic ->>+ Customer : append Payment
         Customer -->>- Clinic : return success
-        Clinic ->> Clinic : create_payment_slip()
+        Clinic ->>+ Payment : create_payment_slip()
+        Payment -->>- Clinic : return payment_slip
         Clinic -->>- UI : return payment_slip
