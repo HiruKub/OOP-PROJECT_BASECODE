@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime , timedelta
+from datetime import datetime,timedelta
 import math
 
 
@@ -36,9 +36,11 @@ class ReservationRequest(BaseModel):
     customer_id: str
     pet_id: str
     service_type: str
-    datetime_str: str
-    payment_method: Optional[str] = None
+    datetime_start_str: str
+    datetime_end_str: Optional[str] = None
     room_type: Optional[str] = None
+    payment_method: Optional[str] = None
+    card_id: Optional[str] = None
 
 class PaymentRequest(BaseModel):
     payment_type : str
@@ -82,10 +84,10 @@ class MedicalReservation(Reservation):
 
 
 class HotelReservation(Reservation):
-    def __init__(self, reservation_id, customer, pet, time, room, payment):
-        super().__init__(reservation_id, customer, pet, time)
+    def __init__(self, reservation_id, customer, pet, time_start,time_end, room, total_price, payment):
+        super().__init__(reservation_id, customer, pet, time_start)
         self.room = room
-        self.price = room.get_price
+        self.price = total_price
         self.payment = payment
 
     @property
@@ -632,10 +634,11 @@ class Doctor(Employee):
 class Room:
     price_per_day = 0
 
-    def __init__(self, room_id, room_type):
+    def __init__(self, room_id, room_type,capacity = 1):
         self.__room_id = room_id
         self.__room_type = room_type
-        self.__busy_slot = []
+        self.__capacity = capacity
+        self.__busy_slot = []#[(start_dt,end_dt)]
 
     def get_details(self):
         return f"ID: {self.__room_id}, Type: {self.__room_type}"
@@ -656,14 +659,20 @@ class Room:
     def room_type(self):
         return self.__room_type
 
-    def check_availability(self, time: str):
-        if time not in self.__busy_slot:
+    def check_availability(self, time_start: datetime, time_end: datetime):
+        overlap_count = 0
+        # check Overlap
+        for busy_start, busy_end in self.__busy_slot:
+            if time_start < busy_end and time_end > busy_start:
+                overlap_count += 1
+            
+        if overlap_count < self.__capacity:
             return True
         return False
 
-    def book_room(self, time: str):
-        if self.check_availability(time):
-            self.__busy_slot.append(time)
+    def book_room(self, time_start: datetime,time_end : datetime):
+        if self.check_availability(time_start,time_end):
+            self.__busy_slot.append((time_start,time_end))
             return True
         return False
 
@@ -672,14 +681,14 @@ class PrivateRoom(Room):
     price_per_day = 1500
 
     def __init__(self, room_id):
-        super().__init__(room_id, "privateroom")
+        super().__init__(room_id, "privateroom",capacity = 1)
 
 
 class ShareRoom(Room):
     price_per_day = 500
 
     def __init__(self, room_id):
-        super().__init__(room_id, "shareroom")
+        super().__init__(room_id, "shareroom",capacity = 10)
 
 
 # Clinic Controller Class
@@ -706,7 +715,8 @@ class Clinic:
         c1 = Customer("C01", "Pingtale", "0999999999", "pingtale@email.com")
         p1 = Pet("P01", "Niggy", "Dog", "Golden", 25, "C01")
         c1.add_pet(p1)
-        c1.add_card(Card("1234-5678")) # แก้จาก string เป็น object ให้ เพราะแก้ระบบ Class Card
+        c1.add_card(Card("1234-5678"))
+        c1.deposit_to_card("1234-5678",50000)
         self.__customer.append(c1)
         self.__pet = [p1]
 
@@ -841,8 +851,8 @@ class Clinic:
     def get_payment_method_object(self,customer,payment_type,card_ID = None) :
         payment_type = payment_type.lower()
         if payment_type == "qrcode" :
-            ID = self.generate_ID()
-            method = QRCode(ID)
+            id = self.generate_ID()
+            method = QRCode(id)
         elif payment_type == "card" :
             method = customer.search_card(card_ID)
         return method
@@ -999,23 +1009,40 @@ class Clinic:
         payment = self.create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
         customer.add_payment(payment)
         payment_slip = payment.create_payment_slip()
-        return payment_slip        
+        return payment_slip
+    
+    #เปลี่ยน str ให้กลายเป็น time object 
+    # หากไม่ได้ใส่ time_end มาให้
+    def convert_str_to_time(self, time_start : str, time_end : str):
+        time_format = "%Y-%m-%d %H:%M"
+        start_dt = datetime.strptime(time_start, time_format)
 
+        if time_end:
+            end_dt = datetime.strptime(time_end,time_format)
+        else:
+            end_dt = start_dt + timedelta(hours = 1)
+            
+        return start_dt, end_dt
+        
     def create_reservation(
         self,
         customer_id,
         pet_id,
         service_type,
-        time,
-        payment_method=None,
+        time_start,
+        time_end=None,
         room_type=None,
+        payment_method=None,
+        card_id=None,
     ):
         resource = None
         price = 0
         customer = self.get_customer_info(customer_id)
         pet = self.get_pet_info(pet_id)
         payment_obj = None
-
+        
+        start_dt,end_dt = self.convert_str_to_time(time_start,time_end)
+        
         if service_type == "Grooming":
             resource = "Grooming"
 
@@ -1026,65 +1053,83 @@ class Clinic:
                     "message": "Hotel reservation requires a payment method (e.g., 'card' or 'qrcode')",
                 }
 
+            if not time_end:
+                return {
+                    "status": "fail",
+                    "message": "Hotel reservation requires a checkout time",
+                }
+            
             if not room_type:
                 return {
                     "status": "fail",
                     "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
                 }
+            
+            
+            
             if payment_method.lower() == "card":
-                payment_obj = Card()
+                if not customer.card:
+                    return {"status": "fail", "message": "Customer has no card."}
+                if card_id == None:
+                    return {"status": "fail", "message": "Require CardID."}
             elif payment_method.lower() == "qrcode":
-                payment_obj = QRCode()
+                pass
             else:
                 return {"status": "fail", "message": "Invalid payment method"}
-
+            
+            original_time_duration = end_dt - start_dt
+            staying_time =  max(1, original_time_duration.days)
+            
             for room in self.__rooms:
-                if room_type.lower() == room.room_type:
-                    if room.book_room(time):
-                        resource = room
-                        price = room.get_price
-                        if isinstance(payment_obj, Card):
-                            if customer.card:
-                                card_to_use = customer.card[0]
-                            else:
-                                return None
-                            pay_result = payment_obj.pay(
-                                price, payment_method, customer, card_to_use
-                            )
-
-                        elif isinstance(payment_obj, QRCode):
-                            pay_result = payment_obj.pay(price, payment_method)
-
-                        if pay_result != "Success":
-                            room._is_full = False
-                            resource = None
-                            return {
-                                "status": "fail",
-                                "message": "Payment failed. Room reservation cancelled.",
-                            }
-                        break
-                    else:
-                        resource = None
-
-        # อันนี้เพิ่มมาเป็นเฉพาะของหมอที่จองห้องให้ ไม่ได้เอา payment มาเกี่ยว
-        elif service_type == "Admission":
-            if not room_type:
-                return {
-                    "status": "fail",
-                    "massage": "Admission Required Room type PrivateRoom or ShareRoom",
-                }
-
-            for room in self.__rooms:
-                if room_type.lower() == room.room_type and room.check_availability(time):
-                    room.book_room(time)
+                if room_type.lower() == room.room_type and room.book_room(start_dt,end_dt):
                     resource = room
-                    price = room.get_price
+                    price = room.get_price * staying_time
+                    
+                    # print(f"days {original_time_duration.days}")
+                    # print(f"staying time {staying_time}")
+                    # print(f"price {price}")
+                    
+                    payment_obj = self.get_payment_method_object(customer,payment_method,card_id)
+                    
+                    if payment_obj == None:
+                        room.busy_slot.remove(time_start,time_end)
+                        resource = None
+                        return {
+                            "status": "fail",
+                            "message": "CardID Not Found.",
+                        }
+                        
+                    pay_result = self.pay(price, payment_obj,price)
+                    
+                    if pay_result != "Success":
+                        room.busy_slot.remove((start_dt,end_dt))
+                        resource = None
+                        return {
+                            "status": "fail",
+                            "message": "Payment failed. Room reservation cancelled.",
+                        }
+                        
+                    # Payment Record
+                    today = datetime.today()
+                    payment_ID = self.generate_ID()
+                    point = self.add_point(customer,price) 
+                    payment_record = Payment(
+                        customer_id=customer.id,
+                        payment_ID=payment_ID,
+                        method=payment_obj,
+                        price=price,
+                        service_list=[f"Pre-paid Hotel ({room.get_details()})"],
+                        date=today,
+                        point=point
+                    )
+                    customer.add_payment(payment_record)
                     break
-
+        
+        
         elif service_type == "Medical":
             for emp in self.__employee:
-                if emp.Type == "Doctor" and emp.get_avaliable_work(time):
-                    if emp.update_timeslot(time):
+                if emp.Type == "Doctor" and emp.get_avaliable_work(time_start):
+                    if emp.update_timeslot(time_start):
                         resource = emp
                         break
 
@@ -1092,7 +1137,7 @@ class Clinic:
             reservation_id = str(uuid.uuid1())[:8]
             if service_type == "Grooming":
                 new_reservation = GroomingReservation(
-                    reservation_id, customer, pet, time
+                    reservation_id, customer, pet, start_dt
                 )
 
             elif service_type == "Hotel":
@@ -1100,8 +1145,10 @@ class Clinic:
                     reservation_id,
                     customer,
                     pet,
-                    time,
+                    start_dt.date(),
+                    end_dt.date(),
                     resource,
+                    price,
                     payment_method,
                 )
 
@@ -1118,7 +1165,7 @@ class Clinic:
 
             elif service_type == "Medical":
                 new_reservation = MedicalReservation(
-                    reservation_id, customer, pet, time, resource
+                    reservation_id, customer, pet, start_dt, resource
                 )
 
             self.__reservation.append(new_reservation)
@@ -1134,7 +1181,8 @@ class Clinic:
                     "status": "success",
                     "customer_name": customer.name,
                     "detail": new_reservation.get_details(),
-                    "time": time,
+                    "date_start": start_dt.date(),
+                    "Check_Out_Date" : end_dt.date(),
                     "payment": "PAID",
                 }
 
@@ -1143,13 +1191,13 @@ class Clinic:
                     "status": "success",
                     "customer_name": customer.name,
                     "detail": new_reservation.get_details(),
-                    "time": time,
+                    "time": start_dt,
                     "payment": "Pay Later",
                 }
         else:
             return {
                 "status": "fail",
-                "message": f"No available resource for {service_type} at {time}",
+                "message": f"No available resource for {service_type} at {start_dt}",
             }
         
     def medical_treatment(self, data: TreatmentRequest, doctor_obj):
@@ -1205,9 +1253,11 @@ async def make_reservation(req: ReservationRequest):
         req.customer_id,
         req.pet_id,
         req.service_type,
-        req.datetime_str,
-        req.payment_method,
+        req.datetime_start_str,
+        req.datetime_end_str,
         req.room_type,
+        req.payment_method,
+        req.card_id
     )
     return result
 
@@ -1283,10 +1333,22 @@ if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1",
                 port=8000, log_level="info", reload=True)
 
+# fastapi dev main.py
+
+# จอง Hotel (จ่ายผ่าน QRCode)
 # {
 #   "customer_id": "C01",
 #   "pet_id": "P01",
-#   "service_type": "Admission",
-#   "datetime_str": "2026-02-23 12:40",
-#   "room_type": "PrivateRoom"
+#   "service_type": "Hotel",
+#   "datetime_str": "2023-10-27 10:00",
+#   "room_type": "PrivateRoom",
+#   "payment_method": "qrcode",
+#   "card_id": ""
+# }
+# จอง Medical / Grooming (ไม่มี payment_method)
+# {
+#   "customer_id": "C01",
+#   "pet_id": "P01",
+#   "service_type": "Medical",
+#   "datetime_str": "2023-10-27 10:00"
 # }
