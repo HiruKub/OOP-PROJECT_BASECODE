@@ -10,7 +10,7 @@ sequenceDiagram
 
     Employee ->>+ Clinic: medical_treatment(type, owner, doctor_id, pet, symptom, medicine, vaccine, price, doctor_obj)
 
-    loop check doctor
+    loop search doctor
         Clinic->>+Doctor: get_doctor_info(doctor_id)
         alt found
             Doctor-->>Clinic: return Doctor Object
@@ -19,63 +19,60 @@ sequenceDiagram
         end
     end
 
-    Clinic ->>+ Doctor: start_medical_service(data, clinic_obj)
+    %% Clinic ->>+ Doctor: start_medical_service(data, clinic_obj)
 
-    loop check customer
-        Doctor ->>+ Clinic: get_customer_info(customer_id)
-        %% Clinic ->>+ Customer: get_customer_id()
-        %% Customer -->>- Clinic: return customer_id
+    loop search customer
+        Clinic->>+Customer: get_customer_info(customer_id)
         alt found
-            Clinic -->> Doctor: return Customer Object
+            Customer-->>Clinic: return Doctor Object
         else not found
-            Clinic -->>- Doctor: return customer is not found
+            Customer-->>-Clinic: return Doctor is not found
         end
     end
-
     
-    
-    loop 
-        
-        Doctor->>+Clinic: get_pet_info(petID)
-        
-        alt found
-             
-            Clinic-->>Doctor: return Pet Object 
+    loop search pet
+        Clinic->>+Pet: get_pet_info(petID)
+        alt found   
+            Pet-->>Clinic: return Pet Object 
         else not found
-           
-            Clinic-->>-Doctor: return pet is not found
+            Pet-->>-Clinic: return pet is not found
         end
     end
     
 
-    Doctor->>Doctor: update_information(symptom,medical,vaccine,price)
+    %% Doctor->>Doctor: update_information(symptom,medical,vaccine,price)
     
-    Doctor->>Doctor: generate_record_id()
-    
+    %% Doctor->>Doctor: generate_record_id()
+    Clinic->>+Doctor: create_medical_service(data, clinic_obj)
+
     Doctor->>+MedicalService: MedicalService(record_id,type,owner, doctor_id, pet, symptom, medicine, vaccine, price)    
     MedicalService-->>-Doctor: return MedicalService Object
 
     Doctor->>Doctor: append(medical_service)
-    
-    Doctor->>+Pet: search_unpaid_service()
-    Pet-->>-Doctor: return unpaid_service
-    
+
+    Doctor-->>-Clinic: return medical_service
+
+    loop search last unpaid service 
+        Clinic->>+Pet: search_unpaid_service()
+        Pet-->>-Clinic: return unpaid_service
+    end
+
     alt Found unpaid service
-        Doctor->>+Service: append_sub_service(medical_service)
-        Service-->>-Doctor: return add complete
+        Clinic->>+Service: append_sub_service(medical_service)
+        Service-->>-Clinic: return add complete
     else Not found unpaid service
-        Doctor->>+Service: Service(pet_id, customer_name, time)
-        Service-->>-Doctor: return new_big_service
+        Clinic->>+Service: Service(pet_id, customer_name, time)
+        Service-->>-Clinic: return new_big_service
 
-        Doctor->>+Service: append_sub_service(medical_service)
-        Service-->>-Doctor: return add complete
+        Clinic->>+Service: append_sub_service(medical_service)
+        Service-->>-Clinic: return add complete
 
-        Doctor->>+Pet: append_big_service(new_big_service)
-        Pet-->>-Doctor: return add complete
+        Clinic->>+Pet: append_big_service(new_big_service)
+        Pet-->>-Clinic: return add complete
         
     end
 
-    Doctor-->>-Clinic: return medical treatment complete
+    %% Doctor-->>-Clinic: return medical treatment complete
 
     Clinic-->>-Employee: return medical treatment complete
 
