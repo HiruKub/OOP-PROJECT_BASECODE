@@ -319,6 +319,7 @@ class Pet:
         self.__customer_id = customer_id
         self.__service = []
         self.__medical_record = []
+        self.__aggressive = bool(aggressive)
 
     @property
     def vaccine(self):
