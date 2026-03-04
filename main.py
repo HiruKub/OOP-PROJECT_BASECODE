@@ -216,6 +216,12 @@ class Service:
             service_list.append(type)
         return service_list
 
+    def check_has_medical_service(self):
+        for service in self.__sub_service:
+            if isinstance(service, MedicalService):
+                return True
+        return False
+
 # ขอเพิ่ม Service คร่าวๆ ไว้ใช้ตอน Payment
 
 
@@ -360,9 +366,6 @@ class Pet:
             if str(record.change_dict()["Id"]) == str(record_id):
                 return record
         return None
-
-    def append_hotel_service_to_pet(self, hotel_service):
-        pass
 
 
 class Customer:
@@ -601,27 +604,6 @@ class Doctor(Employee):
 
         return medical_service
 
-    def start_pet_admit(self, pet_obj, clinic_obj, time):
-        should_admit = self.check_should_admit(pet_obj)
-        if should_admit == True:
-            result = clinic_obj.pet_admit(time, pet_obj)
-
-            if result == "Admit is complete":
-                return {
-                    "status": "Admit is complete",
-                    "message": "Successfully admitted",
-                }
-            else:  # no room
-                return {
-                    "status": "Admit is failed",
-                    "message": "No available rooms at the selected time",
-                }
-        else:
-            return {
-                "status": "Admit is failed",
-                "message": "Admission rejected",
-            }
-
 
 # Room
 
@@ -731,7 +713,7 @@ class Clinic:
         p1.add_medical_record(medical_record)
 
         # # test api medical treatment (medical treatment ตอน get all)
-        # self.__medical_service.append(medical_record)
+        self.__medical_service.append(medical_record)
 
         # สร้างกล่อง Service test api (admit)
         dummy_big_service = Service(
@@ -1247,30 +1229,40 @@ class Clinic:
         if pet == None:
             return {"Status": "Error", "Message": "Pet is not found"}
 
+        unpaid_service = pet.search_unpaid_service()
+        has_medical_service = False
+
+        if unpaid_service:
+            # เช็คว่า service ล่าสุดเป็น medical มั้ย
+            has_medical_service = unpaid_service.check_has_medical_service()
+
+        if not has_medical_service:
+            return {
+                "status": "Admit is failed",
+                "message": "No active medical service session found for this pet"
+            }
+
         resource = None
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        time_start = datetime.now()
+        time_end = time_start + timedelta(days=1)
+        staying_time = 1
+        price = 0
 
         for room in self.__rooms:
             if room.room_type == "privateroom":
-                if room.book_room(current_time):
+                if room.book_room(time_start, time_end):
                     resource = room
+                    price = room.get_price * staying_time
                     break
 
         if resource:
-            hotel_service = HotelService(resource, current_time)
-            unpaid_service = pet.search_unpaid_service()
+            hotel_service = HotelService(resource, time_start, time_end, price)
+            unpaid_service.append_sub_service(hotel_service)
 
-            if unpaid_service:
-                unpaid_service.append_sub_service(hotel_service)
-                return {
-                    "status": "Admit is complete",
-                    "message": "Successfully admitted",
-                }
-            else:
-                return {
-                    "status": "Admit is failed",
-                    "message": "No active medical service session found for this pet"
-                }
+            return {
+                "status": "Admit is complete",
+                "message": "Successfully admitted",
+            }
 
         else:
             return {
