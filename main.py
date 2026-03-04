@@ -1152,15 +1152,6 @@ class Clinic:
                     payment_method,
                 )
 
-            elif service_type == "Admission":
-                new_reservation = HotelReservation(
-                    reservation_id,
-                    customer,
-                    pet,
-                    time,
-                    resource,
-                    "Pay Later")
-
                 # pet.add_boarding_service(resource)
 
             elif service_type == "Medical":
