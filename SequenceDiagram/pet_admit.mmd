@@ -1,0 +1,43 @@
+sequenceDiagram
+    actor Doctor
+    participant Clinic
+    %% participant DoctorClass
+    participant Pet
+    participant HotelService
+
+    Doctor->>+Clinic: start_pet_admit()
+
+    loop search pet
+    Clinic->>+Pet: get_pet_info(petID)
+    Pet-->>-Clinic: return pet_object
+    end
+
+    loop search private room
+    Clinic->>+Room: get_type_room()
+        Room-->>-Clinic: return type_room
+        alt type_room == "Private"
+            Clinic->>+Room: check_availability()
+            Room->>+TimeSlot: check_available_slot()
+            TimeSlot -->>- Room: return True
+            Room-->>-Clinic: return True
+            Clinic->>+Room: book_room
+            Room->>+TimeSlot: update_busy_slot()
+            TimeSlot-->>-Room: return update complete
+            Room -->>-Clinic: return Success
+        end
+    end
+
+    alt resource != None
+        Clinic->>+HotelService: create_hotel_service()
+        HotelService -->>- Clinic: return create complete
+        Clinic->>+Pet: append_pet()
+        Pet-->>-Clinic: return add complete
+        Clinic-->>Doctor: return status: success
+    else resource == None
+        Clinic-->>-Doctor: return status: fail, room not found
+    end
+    
+
+    
+    
+   
