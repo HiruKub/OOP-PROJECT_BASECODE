@@ -1,4 +1,3 @@
-
 ---
 config:
   look: neo
@@ -30,16 +29,18 @@ sequenceDiagram
     alt resource != None
         Clinic->>Reservation: create GroomingReservation()
         Clinic->>Clinic: __reservation.append(new_reservation)
-        Clinic->>Customer: add_reservation(new_reservation)
-
+        Clinic->>CustomerClass: add_reservation(new_reservation)
+        CustomerClass-->>Clinic: Return Succes
+        Clinic->>CustomerClass: get_email
+        CustomerClass-->>Clinic: return Email
         alt customer.email != None
-            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation)
             Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification 
+            Notification -->>- Customer: return Reservation Success
         else customer.phone != None
-            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
+            Clinic->>+Notification: send_confirmation("SMS", reservation)
             Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification
+            Notification -->>- Customer: return Reservation Success
         end
         
         Clinic-->>Customer: return {"status": "success", ...}

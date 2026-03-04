@@ -3,18 +3,21 @@ config:
   look: neo
   theme: redux-dark-color
 ---
+
 sequenceDiagram
+    autonumber
     actor Customer
     participant Clinic
     participant CustomerClass
     participant Pet
     participant Room
     participant PaymentMethod
+    participant Payment
     participant Reservation
     participant Notification
-    autonumber
+    participant TimeSc
     
-    Customer->>+Clinic: create_reservation(customer_id, pet_id, "Hotel", time, payment_method)
+    Customer->>+Clinic: create_reservation(customer_id, pet_id, "Hotel", time, room_type, payment_method)
     
     loop search customer
         Clinic->>+CustomerClass: get_customer_info(customer_id)
@@ -22,48 +25,64 @@ sequenceDiagram
     end
     
     loop search pet
-        Clinic ->>+ Pet: get_pet_info(pet_id)
-        Pet -->>- Clinic: return Pet
+        Clinic->>+Pet: get_pet_info(pet_id)
+        Pet-->>-Clinic: return Pet
     end
-    
-    Clinic->>PaymentMethod: create payment_obj (Card or QRCode)
-
-    Clinic->>+Room: is_full
-    Room-->>-Clinic: return False
-    Clinic->>+Room: book_room()
-    Room-->>-Clinic: return True
-    Clinic->>+Room: get_price
-    Room-->>-Clinic: return price
-
-    alt payment is Card
-        Clinic->>+PaymentMethod: pay(price, payment_method, customer, card_to_use)
-        PaymentMethod-->>-Clinic: return "Success"
-    else payment is QRCode
-        Clinic->>+PaymentMethod: pay(price, payment_method)
-        PaymentMethod-->>-Clinic: return "Success"
+    loop search same room_type and available room
+        Clinic->>+Room: check_availability(time)
+        Room->>+TimeSc: check_available_slot
+        TimeSc-->>-Room: return True
+        Room-->>-Clinic: return True 
+        Clinic->>+Room: book_room(time)
+        Room->>+TimeSc: update_busy_slot
+        TimeSc-->>-Room: return succes
+        Room-->>-Clinic: return True
+        Clinic->>+Room: get_price
+        Room-->>-Clinic: return price
     end
+    Clinic->>Clinic: payment_obj = get_payment_method_object(...)
+
+    opt payment_obj == None
+        Clinic->>Room: busy_slot.remove(time) (Rollback)
+        Clinic-->>Customer: return {"status": "fail", "message": "CardID Not Found."}
+    end
+
+    Clinic->>+PaymentMethod: pay(price, payment_obj, price)
+    PaymentMethod-->>-Clinic: return pay_result
 
     opt pay_result != "Success"
-        Clinic->>Room: _is_full = False (Rollback)
-        Clinic-->>Customer: return "Payment failed. Room reservation cancelled."
+        Clinic->>Room: busy_slot.remove(time) (Rollback)
+        Clinic-->>Customer: return {"status": "fail", "message": "Payment failed. Room reservation cancelled."}
     end
 
     alt resource != None (มีห้องให้จองและจ่ายเงินผ่าน)
-        Clinic->>Reservation: create HotelReservation()
-        Clinic->>Clinic: __reservation.append(new_reservation)
-        Clinic->>Customer: add_reservation(new_reservation)
+        
+        Clinic->>Clinic: add_point(customer, price)
+        Clinic->>Payment: create Payment(...)
+        Payment-->>Clinic: return Payment
+        Clinic->>CustomerClass: add_payment(payment_record)
+        CustomerClass-->>Clinic: return succes
 
+        Clinic->>Reservation: create HotelReservation()
+        Reservation-->>Clinic: Return Succes
+        Clinic->>Clinic: __reservation.append(new_reservation)
+        Clinic->>CustomerClass: add_reservation(new_reservation)
+        CustomerClass-->>Clinic: return succes
+        Clinic->>CustomerClass: get_email
+        CustomerClass-->>Clinic: return Email
         alt customer.email != None
-            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
-            Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification 
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation)
+            Notification-->>Customer: return Reservation Secces
+            Notification-->>-Clinic: return True
         else customer.phone != None
-            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
-            Notification-->>Clinic: return True
-            Notification -->>- Customer: return Notification
+            Clinic->>+Notification: send_confirmation("SMS", reservation)
+            Notification-->>Customer: return Notification
+            Notification-->>-Clinic: return True
         end
         
         Clinic-->>Customer: return {"status": "success", ...}
     else resource == None (ห้องเต็ม)
-        Clinic-->>-Customer: return {"status": "fail", ...}
+        Clinic-->>Customer: return {"status": "fail", ...}
     end
+    
+    deactivate Clinic

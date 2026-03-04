@@ -549,6 +549,7 @@ if __name__ == "__main__":
 #   "service_type": "Hotel",
 #   "datetime_str": "2023-10-27 10:00",
 #   "payment_method": "qrcode"
+
 # }
 # จอง Medical / Grooming (ไม่มี payment_method)
 # {
