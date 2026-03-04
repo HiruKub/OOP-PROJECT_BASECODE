@@ -28,7 +28,11 @@ sequenceDiagram
         loop each pet in pet_list
             loop search service in pet
                 Clinic ->>+ Pet : search_unpaid_service()
-                Pet -->>- Clinic : return service 
+                Pet ->>+ Service : is_paid()
+                Service -->>- Pet : return True / False
+                alt True 
+                    Pet -->>- Clinic : return service 
+                end
             end
             alt service is not None
                 Clinic ->> Clinic : append in service_list
@@ -38,7 +42,6 @@ sequenceDiagram
             Clinic ->>+ Service : sum_price_in_each_service(service_list)
             Service -->>- Clinic : return sum_price
         end
-        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
         Clinic ->>+ Member : check_member(customer)
         Member -->>- Clinic : return result(True/False)
         alt is member(False)
@@ -58,6 +61,8 @@ sequenceDiagram
                 end
             end
         end
+        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
+
         %% Service -->>- Clinic : return price
         Clinic ->> Clinic : get_payment_method_object(customer,payment_type,card_ID)
         alt payment_type == qrcode
