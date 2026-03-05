@@ -1,0 +1,93 @@
+---
+config:
+  theme: redux-dark-color
+---
+sequenceDiagram
+
+        actor UI
+        participant Clinic
+        participant Pet
+        participant Service
+        participant Customer
+        participant Member
+        participant Coupon
+        participant RewardsCard
+
+        UI ->>+ Clinic : start_calculate_total_price(customer_id,use_cp=False,use_rw_card=False)
+        loop search_customer
+            Clinic ->>+ Customer : get_customer_info(customer_id)
+            Customer -->>- Clinic : return Customer
+        end
+        alt customer == None
+            Clinic -->> UI : return Customer not found
+        end
+        Clinic ->>+ Customer : pet(getter)
+        Customer -->>- Clinic : return pet_list
+
+        loop each pet in pet_list
+            loop search service in pet
+                Clinic ->>+ Pet : search_unpaid_service()
+                Pet ->>+ Service : is_paid()
+                Service -->>- Pet : return True / False
+                alt is_paid == False
+                    Pet -->>- Clinic : return service 
+                end
+                alt service is not None
+                    Clinic ->>+ Service : calculate_total_price()
+                    Service -->>- Clinic : return price
+                end
+            end
+        end
+        Clinic ->>+ Member : check_member(customer)
+        Member -->>- Clinic : return result(True/False)
+        alt is member(False)
+            alt use_cp=True or use_rw_card=True
+                Clinic -->> UI : Not a member
+            end
+        else is member(True)
+            Clinic ->>+ Member : get_tier()
+            Member -->>- Clinic : return tier
+            Clinic ->>+ Member : get_rate()
+            Member -->>- Clinic : return rate
+            alt tier = silver
+                Clinic ->>+ Member : check_is_limit()
+                Member -->>- Clinic : return True/False
+                alt False
+                    Clinic ->> Clinic : calculate_price_with_discount(price,discount)
+                end
+            end
+            alt use_rw_card = True
+                alt tier=silver or tier=gold
+                    Clinic -->> UI : return silver/gold tier cannot use reward card
+                end
+                Clinic ->>+ Member : get_reward_card()
+                Member ->>+ RewardsCard : check_available()
+                RewardsCard -->>- Member : return True/False
+                alt True
+                    Member ->> Member : delete_reward_card()
+                    Member -->> Clinic : return True
+                else False
+                    Member -->>- Clinic : return False
+                end
+                alt True 
+                    Clinic -->> UI : return price = 0 (Free)
+                else False
+                    Clinic -->> UI : return rewards card not available(Must collect more than 10 times)
+                end
+            end
+            alt use_cp = True
+                alt tier=silver
+                    Clinic -->> UI : return silver tier cannot use coupon
+                end
+                Clinic ->>+ Member : get_coupon()
+                Member -->>- Clinic : return coupon
+                alt coupon == None 
+                    Clinic -->> UI : return not have coupon
+                else coupon != None
+                    Clinic ->>+ Coupon : use_coupon()
+                    Coupon -->>- Clinic : return discount
+                    Clinic ->> Clinic : calculate_price_with_discount(price,discount)
+                end
+            end
+        end
+        Clinic -->>- UI : return price
