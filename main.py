@@ -362,11 +362,6 @@ class Pet:
     def add_medical_record(self, medical_record):
         self.__medical_record.append(medical_record)
 
-    def search_medical_record(self, record_id):
-        for record in self.__medical_record:
-            if str(record.change_dict()["Id"]) == str(record_id):
-                return record
-        return None
 
 
 class Customer:
