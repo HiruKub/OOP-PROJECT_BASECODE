@@ -17,20 +17,20 @@ sequenceDiagram
         Room-->>-Clinic: return type_room
         alt type_room == "Private"
             Clinic->>+Room: check_availability()
-            Room->>+TimeSlot: check_available_slot()
-            TimeSlot -->>- Room: return True
+            Room->>+TimeSchedule: search_availability()
+            TimeSchedule -->>- Room: return True
             Room-->>-Clinic: return True
             Clinic->>+Room: book_room
-            Room->>+TimeSlot: update_busy_slot()
-            TimeSlot-->>-Room: return update complete
+            Room->>+TimeSchedule: update_schedule()
+            TimeSchedule-->>-Room: return update complete
             Room -->>-Clinic: return Success
         end
     end
 
     alt resource != None
         Clinic->>+HotelService: create_hotel_service()
-        HotelService -->>- Clinic: return create complete
-        Clinic->>+Pet: append_pet()
+        HotelService -->>- Clinic: return hotel_service
+        Clinic->>+Pet: append_hotel_service_to_pet()
         Pet-->>-Clinic: return add complete
         Clinic-->>Doctor: return status: success
     else resource == None
