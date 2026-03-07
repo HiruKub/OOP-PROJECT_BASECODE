@@ -13,6 +13,21 @@ app = FastAPI()
 # Base Model
 
 
+class RegisterRequest(BaseModel):
+    customer_name: str
+    phone_number: str
+    email: str
+
+
+class RegisterPetRequest(BaseModel):
+    pet_name: str
+    type_pet: str
+    species: str
+    weight: str
+    customer_id: str
+    aggressive: bool = False
+
+
 class AdmitRequest(BaseModel):
     doctor_id: str
     petID: str
@@ -204,11 +219,7 @@ class Service:
         total = 0
         for service in self.__sub_service:
             if isinstance(service, HotelService):
-                service.calculate_hotel_service_price()
-                
-                if service.is_from_reservation:
-                    continue
-                
+                service.calculate_hotel_service_price
             total += service.price
         self.__price = total
         return self.__price
@@ -244,23 +255,18 @@ class GroomingService:
 
 
 class HotelService:
-    def __init__(self, room, entry_date, exit_date, price, from_reservation = False):
+    def __init__(self, room, entry_date, exit_date, price):
         self.__type_service = "hotel"
         self.__room = room
         self.__entry_date = entry_date
         self.__exit_date = exit_date
         self.__price = 0
-        self.__from_reservation = from_reservation
         self.calculate_hotel_service_price()
 
     @property
     def price(self):
         return self.__price
 
-    @property
-    def is_from_reservation(self):
-        return self.__from_reservation
-    
     @property
     def type(self):
         return self.__type_service
@@ -299,14 +305,6 @@ class MedicalService:
     @property
     def should_admit(self):
         return self.__should_admit
-    
-    @property
-    def price(self):
-        return self.__price
-    
-    @property
-    def type(self):
-        return self.__type_service
 
     def change_dict(self):
         return {
@@ -353,10 +351,6 @@ class Pet:
     @property
     def name(self):
         return self.__name
-    
-    @property
-    def service(self):
-        return self.__service
 
     def search_unpaid_service(self):
         for service in self.__service:
@@ -384,7 +378,6 @@ class Pet:
         self.__medical_record.append(medical_record)
 
 
-
 class Customer:
     def __init__(self, customer_id, name, phone_number, email):
         self.__customer_id = customer_id
@@ -395,7 +388,6 @@ class Customer:
         self.__reservation = []
         self.__payment_list = []
         self.__card = []
-        pass
 
     def add_pet(self, pet: Pet):
         self.__pet.append(pet)
@@ -456,7 +448,7 @@ class Member(Customer):
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, tier, rate, point=0):
         super().__init__(customer_id, name, phone_number, email)
-        self.__signnp_date = sign_up_date
+        self.__signup_date = sign_up_date
         self.__point = point
         self.__coupon = []
         self.__tier = tier
@@ -844,6 +836,44 @@ class Clinic:
         else:
             return False
 
+    def register_customer(self, data: RegisterRequest):
+        customer_id = self.generate_ID()
+        customer = Customer(customer_id, data.customer_name,
+                            data.phone_number, data.email)
+        self.__customer.append(customer)
+        return {
+            "Status": "success",
+            "Customer_id": customer_id,
+            "Customer_name": data.customer_name,
+            "Phone_number": data.phone_number,
+            "Email": data.email,
+        }
+
+    def register_pet(self, data: RegisterPetRequest):
+        customer = self.get_customer_info(data.customer_id)
+        if customer:
+            petID = self.generate_ID()
+            pet = Pet(petID, data.pet_name, data.type_pet, data.species,
+                      data.weight, data.customer_id, data.aggressive)
+            customer.add_pet(pet)
+            self.__pet.append(pet)
+
+            return {
+                "Status": "success",
+                "Pet_id": petID,
+                "Pet_name": data.pet_name,
+                "Type_pet": data.type_pet,
+                "Species": data.species,
+                "Weight": data.weight,
+                "Customer_id": data.customer_id,
+                "Aggressive": data.aggressive,
+            }
+        else:
+            return {
+                "Status": "fail",
+                "Message": "Please register customer first !",
+            }
+
     def get_payment_method_object(self, customer, payment_type, card_ID=None):
         payment_type = payment_type.lower()
         if payment_type == "qrcode":
@@ -1123,10 +1153,6 @@ class Clinic:
                         point=point
                     )
                     customer.add_payment(payment_record)
-                    big_service = Service(pet_id,customer_id,start_dt)
-                    hotel_service_with_reservation = HotelService(resource,start_dt,end_dt,price,True)
-                    big_service.append_sub_service(hotel_service_with_reservation)
-                    pet.append_big_service(big_service)
                     break
 
         elif service_type == "Medical":
@@ -1302,6 +1328,18 @@ async def root() -> dict:
     return {"Pet Shop": "Online"}
 
 
+@app.post("/RegisterCustomer", tags=["Register"])
+async def make_register(data: RegisterRequest):
+    register_customer = clinic_sys.register_customer(data)
+    return register_customer
+
+
+@app.post("/RegisterPet", tags=["Register"])
+async def make_register_pet(data: RegisterPetRequest):
+    register_pet = clinic_sys.register_pet(data)
+    return register_pet
+
+
 @app.post("/Reservation", tags=["Reservation"])
 async def make_reservation(req: ReservationRequest):
     result = clinic_sys.create_reservation(
@@ -1315,39 +1353,6 @@ async def make_reservation(req: ReservationRequest):
         req.card_id
     )
     return result
-
-
-@app.get("/pet/{pet_id}/services", tags=["Test & Check"])
-def check_pet_services(pet_id: str):
-    pet = clinic_sys.get_pet_info(pet_id)
-    if not pet:
-        return {"status": "fail", "message": "Pet not found"}
-
-    service_history = []
-    
-    for idx, big_service in enumerate(pet.service):
-        current_total_price = big_service.calculate_total_price()
-        service_date = big_service.get_date
-        if isinstance(service_date, datetime):
-            formatted_date = service_date.strftime("%Y-%m-%d %H:%M")
-        else:
-            formatted_date = str(service_date)
-
-        service_history.append({
-            "bill_no": idx + 1,
-            "date_created": formatted_date,
-            "is_paid": big_service.is_paid,
-            "services_inside": big_service.get_service_list(),
-            "total_price_to_pay_now": current_total_price 
-        })
-
-    return {
-        "status": "success(Found)",
-        "pet_id": pet.id,
-        "pet_name": pet.name,
-        "total_service_boxes": len(pet.service),
-        "history": service_history
-    }
 
 
 @app.post("/payment/{customer_id}", tags=["Payment"])
@@ -1431,4 +1436,21 @@ if __name__ == "__main__":
 #   "pet_id": "P01",
 #   "service_type": "Medical",
 #   "datetime_str": "2023-10-27 10:00"
+# }
+
+# ลงทะเบียนลูกค้า
+# {
+#   "customer_name": "Somsri",
+#   "phone_number": "12345",
+#   "email": "eiei@gmail.com"
+# }
+
+# ลงทะเบียนสัตว์
+# {
+#   "pet_name": "pingtale",
+#   "type_pet": "ping",
+#   "species": "tale",
+#   "weight": "5",
+#   "customer_id": "ลงลูกค้าก่อนค่อยcopyมาใส่",
+#   "aggressive": true
 # }
