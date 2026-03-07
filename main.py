@@ -204,7 +204,11 @@ class Service:
         total = 0
         for service in self.__sub_service:
             if isinstance(service, HotelService):
-                service.calculate_hotel_service_price
+                service.calculate_hotel_service_price()
+                
+                if service.is_from_reservation:
+                    continue
+                
             total += service.price
         self.__price = total
         return self.__price
@@ -240,18 +244,23 @@ class GroomingService:
 
 
 class HotelService:
-    def __init__(self, room, entry_date, exit_date, price):
+    def __init__(self, room, entry_date, exit_date, price, from_reservation = False):
         self.__type_service = "hotel"
         self.__room = room
         self.__entry_date = entry_date
         self.__exit_date = exit_date
         self.__price = 0
+        self.__from_reservation = from_reservation
         self.calculate_hotel_service_price()
 
     @property
     def price(self):
         return self.__price
 
+    @property
+    def is_from_reservation(self):
+        return self.__from_reservation
+    
     @property
     def type(self):
         return self.__type_service
@@ -290,6 +299,14 @@ class MedicalService:
     @property
     def should_admit(self):
         return self.__should_admit
+    
+    @property
+    def price(self):
+        return self.__price
+    
+    @property
+    def type(self):
+        return self.__type_service
 
     def change_dict(self):
         return {
@@ -336,6 +353,10 @@ class Pet:
     @property
     def name(self):
         return self.__name
+    
+    @property
+    def service(self):
+        return self.__service
 
     def search_unpaid_service(self):
         for service in self.__service:
@@ -1102,6 +1123,10 @@ class Clinic:
                         point=point
                     )
                     customer.add_payment(payment_record)
+                    big_service = Service(pet_id,customer_id,start_dt)
+                    hotel_service_with_reservation = HotelService(resource,start_dt,end_dt,price,True)
+                    big_service.append_sub_service(hotel_service_with_reservation)
+                    pet.append_big_service(big_service)
                     break
 
         elif service_type == "Medical":
@@ -1290,6 +1315,39 @@ async def make_reservation(req: ReservationRequest):
         req.card_id
     )
     return result
+
+
+@app.get("/pet/{pet_id}/services", tags=["Test & Check"])
+def check_pet_services(pet_id: str):
+    pet = clinic_sys.get_pet_info(pet_id)
+    if not pet:
+        return {"status": "fail", "message": "Pet not found"}
+
+    service_history = []
+    
+    for idx, big_service in enumerate(pet.service):
+        current_total_price = big_service.calculate_total_price()
+        service_date = big_service.get_date
+        if isinstance(service_date, datetime):
+            formatted_date = service_date.strftime("%Y-%m-%d %H:%M")
+        else:
+            formatted_date = str(service_date)
+
+        service_history.append({
+            "bill_no": idx + 1,
+            "date_created": formatted_date,
+            "is_paid": big_service.is_paid,
+            "services_inside": big_service.get_service_list(),
+            "total_price_to_pay_now": current_total_price 
+        })
+
+    return {
+        "status": "success(Found)",
+        "pet_id": pet.id,
+        "pet_name": pet.name,
+        "total_service_boxes": len(pet.service),
+        "history": service_history
+    }
 
 
 @app.post("/payment/{customer_id}", tags=["Payment"])
