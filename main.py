@@ -240,12 +240,13 @@ class GroomingService:
 
 
 class HotelService:
-    def __init__(self, room, entry_date, exit_date, price):
+    def __init__(self, room, entry_date, exit_date, price, from_reservation = False):
         self.__type_service = "hotel"
         self.__room = room
         self.__entry_date = entry_date
         self.__exit_date = exit_date
         self.__price = 0
+        self.__from_reservation = from_reservation
         self.calculate_hotel_service_price()
 
     @property
@@ -1102,6 +1103,10 @@ class Clinic:
                         point=point
                     )
                     customer.add_payment(payment_record)
+                    big_service = Service(pet_id,customer_id,start_dt)
+                    hotel_service_with_reservation = HotelService(resource,start_dt,end_dt,price,True)
+                    big_service.append_sub_service(hotel_service_with_reservation)
+                    pet.append_big_service(big_service)
                     break
 
         elif service_type == "Medical":
