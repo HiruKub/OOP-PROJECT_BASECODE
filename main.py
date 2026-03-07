@@ -345,6 +345,10 @@ class Pet:
     @property
     def name(self):
         return self.__name
+    
+    @property
+    def service(self):
+        return self.__service
 
     def search_unpaid_service(self):
         for service in self.__service:
@@ -1303,6 +1307,39 @@ async def make_reservation(req: ReservationRequest):
         req.card_id
     )
     return result
+
+
+@app.get("/pet/{pet_id}/services", tags=["Test & Check"])
+def check_pet_services(pet_id: str):
+    pet = clinic_sys.get_pet_info(pet_id)
+    if not pet:
+        return {"status": "fail", "message": "Pet not found"}
+
+    service_history = []
+    
+    for idx, big_service in enumerate(pet.services):
+        current_total_price = big_service.calculate_total_price()
+        service_date = big_service.get_date
+        if isinstance(service_date, datetime):
+            formatted_date = service_date.strftime("%Y-%m-%d %H:%M")
+        else:
+            formatted_date = str(service_date)
+
+        service_history.append({
+            "bill_no": idx + 1,
+            "date_created": formatted_date,
+            "is_paid": big_service.is_paid,
+            "services_inside": big_service.get_service_list(),
+            "total_price_to_pay_now": current_total_price 
+        })
+
+    return {
+        "status": "success",
+        "pet_id": pet.id,
+        "pet_name": pet.name,
+        "total_service_boxes": len(pet.services),
+        "history": service_history
+    }
 
 
 @app.post("/payment/{customer_id}", tags=["Payment"])
