@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 import math
 
 
+
 app = FastAPI()
+
 
 # Base Model
 
@@ -176,10 +178,8 @@ class Payment:
 
 # Customer Related Class
 # Service CLass
-class Service:
-    def __init__(self, pet_id, owner_id, date):
-        self.__pet_name = pet_id
-        self.__owner = owner_id
+class RecordService:
+    def __init__(self, date):
         self.__date = date
         self.__sub_service = []
         self.__price = 0
@@ -228,11 +228,16 @@ class Service:
 
 # ขอเพิ่ม Service คร่าวๆ ไว้ใช้ตอน Payment
 
-
-class GroomingService:
-    def __init__(self, price):
-        self.__type_service = "grooming"
+class Service :
+    def __init__(self,type_service,price) :
+        self.__type_service = type_service
         self.__price = price
+
+class GroomingService(Service):
+    BasePrice = 2000
+    def __init__(self, pet):
+        price = self.calculate_grooming_service_price(pet)
+        super().__init__("grooming",price)
 
     @property
     def price(self):
@@ -241,17 +246,21 @@ class GroomingService:
     @property
     def type(self):
         return self.__type_service
+    
+    def calculate_grooming_service_price (self,pet) :
+        price = self.BasePrice
+        aggressive = pet.aggressive
+        if aggressive :
+            price += 500
+        return price
 
-
-class HotelService:
+class HotelService(Service):
     def __init__(self, room, entry_date, exit_date, price, from_reservation = False):
-        self.__type_service = "hotel"
+        super().__init__("hotel",price)
         self.__room = room
         self.__entry_date = entry_date
         self.__exit_date = exit_date
-        self.__price = 0
         self.__from_reservation = from_reservation
-        self.calculate_hotel_service_price()
 
     @property
     def price(self):
@@ -265,13 +274,7 @@ class HotelService:
     def type(self):
         return self.__type_service
 
-    def calculate_hotel_service_price(self):
-        diff = self.__exit_date.date() - self.__entry_date.date()
-        price = self.__room.get_price * diff.days
-        self.__price = price
-
-
-class MedicalService:
+class MedicalService(Service):
     def __init__(
         self,
         record_id,
@@ -285,15 +288,14 @@ class MedicalService:
         price,
         should_admit
     ):
+        super().__init__(type_service,price)
         self.__record_id = record_id
-        self.__type_service = type_service
         self.__owner_obj = owner_obj
         self.__doctor_obj = doctor_obj
         self.__pet_obj = pet_obj
         self.__symptom = symptom
         self.__medicine = medicine
         self.__vaccine = vaccine
-        self.__price = price
         self.__should_admit = should_admit
 
     @property
@@ -321,7 +323,6 @@ class MedicalService:
             "Price": self.__price,
             "Should Admit": self.__should_admit
         }
-
 
 class Pet:
 
@@ -733,8 +734,7 @@ class Clinic:
         self.__medical_service.append(medical_record)
 
         # สร้างกล่อง Service test api (admit)
-        dummy_big_service = Service(
-            p1.id, c1.name, datetime.now())
+        dummy_big_service = RecordService(datetime.now())
         dummy_big_service.append_sub_service(medical_record)
         p1.append_big_service(dummy_big_service)
 
@@ -769,14 +769,14 @@ class Clinic:
 
         today = datetime.now()
 
-        self.record_service("P02", "123445", "grooming", 2000, today)
-        self.record_service("P02", "123445", "hotel", 5000,
-                            today, today + timedelta(days=3), "R01")
+        # self.record_service("P02", "123445", "grooming", 2000, today)
+        # self.record_service("P02", "123445", "hotel", 5000,
+        #                     today, today + timedelta(days=3), "R01")
 
-        self.record_service("P04", "123456", "grooming", 2000, today)
-        self.record_service("P03", "123456", "grooming", 2000, today)
-        self.record_service("P04", "123456", "hotel", 5000,
-                            today, today + timedelta(days=3), "R01")
+        # self.record_service("P04", "123456", "grooming", 2000, today)
+        # self.record_service("P03", "123456", "grooming", 2000, today)
+        # self.record_service("P04", "123456", "hotel", 5000,
+        #                     today, today + timedelta(days=3), "R01")
 
         self.add_point(Peem, 50000)
         self.point_to_coupon("123456")
@@ -786,33 +786,19 @@ class Clinic:
         self.point_to_coupon("123456")
 
     # make service ในส่วน Grooming หรือ Boarding
-    def record_service(self, pet_id, customer_id, type, price, entry_date, exit_date=None, room_id=None):
+    def record_service(self, pet_id):
         pet = self.get_pet_info(pet_id)
-        if pet == None:
-            return "Not found"
-        else:
-            big_service = pet.search_unpaid_service()
-            should_create_big_service = False
-            if big_service == None:
-                should_create_big_service = True
-                big_service = Service(pet_id, customer_id, entry_date)
-
-            if type == "grooming":
-                grooming = GroomingService(price)
-                big_service.append_sub_service(grooming)
-
-            elif type == "hotel":
-                room = None
-                for r in self.__rooms:
-                    if r.room_id == room_id:
-                        room = r
-
-                if room != None:
-                    hotel = HotelService(room, entry_date, exit_date, price)
-                    big_service.append_sub_service(hotel)
-
-        if (should_create_big_service):
-            pet.append_big_service(big_service)
+        if pet == None :
+            return "Pet not found"
+        
+        grooming = GroomingService(pet)
+        big_service = pet.search_unpaid_service()
+        
+        if big_service == None:
+            big_service = Service(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        big_service.append_sub_service(grooming)
+        pet.append_big_service(big_service)
+        return "Success"
 
     def add_pet(self, pet):
         self.__pet.append(pet)
@@ -1123,7 +1109,7 @@ class Clinic:
                         point=point
                     )
                     customer.add_payment(payment_record)
-                    big_service = Service(pet_id,customer_id,start_dt)
+                    big_service = Service(start_dt)
                     hotel_service_with_reservation = HotelService(resource,start_dt,end_dt,price,True)
                     big_service.append_sub_service(hotel_service_with_reservation)
                     pet.append_big_service(big_service)
@@ -1215,8 +1201,8 @@ class Clinic:
             unpaid_service.append_sub_service(medical_service)
 
         else:
-            new_big_service = Service(
-                pet.id, customer.name, datetime.now())  # สร้างกล่องใหญ่
+            #แก้datetimeให้รูปแบบเหมือน hotel service
+            new_big_service = Service(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # สร้างกล่องใหญ่ 
             new_big_service.append_sub_service(
                 medical_service)  # เพิ่ม sub service ลง
 
@@ -1316,7 +1302,6 @@ async def make_reservation(req: ReservationRequest):
     )
     return result
 
-
 @app.get("/pet/{pet_id}/services", tags=["Test & Check"])
 def check_pet_services(pet_id: str):
     pet = clinic_sys.get_pet_info(pet_id)
@@ -1349,7 +1334,6 @@ def check_pet_services(pet_id: str):
         "history": service_history
     }
 
-
 @app.post("/payment/{customer_id}", tags=["Payment"])
 def payment(customer_id: str, req: PaymentRequest):
     result = clinic_sys.start_payment(
@@ -1360,7 +1344,6 @@ def payment(customer_id: str, req: PaymentRequest):
         req.money
     )
     return (result)
-
 
 @app.post("/medical_treatment", tags=["Medical Treatment"])
 async def add_medical_treatment(data: TreatmentRequest):
@@ -1377,6 +1360,10 @@ async def add_medical_treatment(data: TreatmentRequest):
             "Message": medical_treatment["Message"]
         }
 
+@app.post("/grooming_record" ,  tags = ["Grooming Service"])
+def record_grooming_service(pet_id : str) :
+    result = clinic_sys.record_service(pet_id)
+    return result
 
 @app.get("/medical_treatment", tags=["Medical Treatment"])
 async def get_medical_treatments():

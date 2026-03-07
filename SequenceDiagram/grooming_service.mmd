@@ -1,0 +1,35 @@
+---
+config:
+  theme: redux-dark-color
+---
+sequenceDiagram
+
+actor employee
+participant Clinic
+participant Service
+participant GroomingService
+
+employee ->>+ Clinic : record_service(pet_id)
+loop
+    Clinic ->>+ Pet : get_pet_info(pet_id)
+    Pet -->>- Clinic : return pet
+end
+alt pet == None
+    Clinic -->> employee : return Pet not found
+end
+Clinic ->>+ GroomingService : create_grooming_service(pet)
+GroomingService ->>+ Pet : aggressive()
+Pet -->>- GroomingService : return True/False
+GroomingService ->> GroomingService : calculate_price()
+GroomingService -->>- Clinic : return GroomingService
+Clinic ->>+ Pet : search_unpaid_service()
+Pet -->>- Clinic : return service/None
+alt None
+    Clinic ->>+ Service : <<create>> (datetime)
+    Service -->>- Clinic : return service
+end
+Clinic ->>+ Service : append_sub_service(GroomingService)
+Service -->>- Clinic : return success
+Clinic ->>+ Pet : append_big_service(service)
+Pet -->>- Clinic : return success
+Clinic -->>- employee : return success
