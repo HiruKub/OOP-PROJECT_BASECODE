@@ -299,6 +299,14 @@ class MedicalService:
     @property
     def should_admit(self):
         return self.__should_admit
+    
+    @property
+    def price(self):
+        return self.__price
+    
+    @property
+    def type(self):
+        return self.__type_service
 
     def change_dict(self):
         return {
@@ -1317,7 +1325,7 @@ def check_pet_services(pet_id: str):
 
     service_history = []
     
-    for idx, big_service in enumerate(pet.services):
+    for idx, big_service in enumerate(pet.service):
         current_total_price = big_service.calculate_total_price()
         service_date = big_service.get_date
         if isinstance(service_date, datetime):
@@ -1334,10 +1342,10 @@ def check_pet_services(pet_id: str):
         })
 
     return {
-        "status": "success",
+        "status": "success(Found)",
         "pet_id": pet.id,
         "pet_name": pet.name,
-        "total_service_boxes": len(pet.services),
+        "total_service_boxes": len(pet.service),
         "history": service_history
     }
 
