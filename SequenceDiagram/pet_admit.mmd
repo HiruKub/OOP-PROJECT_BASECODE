@@ -5,22 +5,33 @@ sequenceDiagram
     participant Pet
     participant HotelService
 
-    Doctor->>+Clinic: start_pet_admit()
+    Doctor->>+Clinic: start_pet_admit(AdmitRequest)
 
     loop search pet
     Clinic->>+Pet: get_pet_info(petID)
     Pet-->>-Clinic: return pet_object
     end
 
+    loop search last unpaid service 
+        Clinic->>+Pet: search_unpaid_service()
+        Pet-->>-Clinic: return unpaid_service
+    end
+
+    Clinic ->>+ Service: check_has_mediacal_service()
+
+    alt has_medical_service == None
+        Service -->>- Clinic: return Admit is failed, No medical service
+    end
+
     loop search private room
     Clinic->>+Room: get_type_room()
         Room-->>-Clinic: return type_room
-        alt type_room == "Private"
+        alt type_room == "privateroom"
             Clinic->>+Room: check_availability()
             Room->>+TimeSchedule: search_availability()
             TimeSchedule -->>- Room: return True
             Room-->>-Clinic: return True
-            Clinic->>+Room: book_room
+            Clinic->>+Room: book_room(time_start, time_end)
             Room->>+TimeSchedule: update_schedule()
             TimeSchedule-->>-Room: return update complete
             Room -->>-Clinic: return Success
@@ -30,7 +41,7 @@ sequenceDiagram
     alt resource != None
         Clinic->>+HotelService: create_hotel_service()
         HotelService -->>- Clinic: return hotel_service
-        Clinic->>+Pet: append_hotel_service_to_pet()
+        Clinic->>+Pet: append_sub_service(hotel_service)
         Pet-->>-Clinic: return add complete
         Clinic-->>Doctor: return status: success
     else resource == None
