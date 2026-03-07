@@ -204,7 +204,11 @@ class Service:
         total = 0
         for service in self.__sub_service:
             if isinstance(service, HotelService):
-                service.calculate_hotel_service_price
+                service.calculate_hotel_service_price()
+                
+                if service.is_from_reservation:
+                    continue
+                
             total += service.price
         self.__price = total
         return self.__price
@@ -253,6 +257,10 @@ class HotelService:
     def price(self):
         return self.__price
 
+    @property
+    def is_from_reservation(self):
+        return self.__from_reservation
+    
     @property
     def type(self):
         return self.__type_service
