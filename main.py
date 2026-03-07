@@ -896,9 +896,22 @@ class Clinic:
         pet.append_big_service(big_service)
         return {
                     "status": "success",
-                    "customer_name": customer_id,
-                    "pet_name": pet.id,
+                    "customer_id": customer_id,
+                    "pet_id": pet.id,
                     "service": "grooming",
+                }
+
+    def create_card(self,customer_id) :
+        customer = self.get_customer_info(customer_id)
+        if customer == None :
+            return "Customer Not Found"
+        card_id = self.generate_ID()
+        card = Card(card_id)
+        customer.add_card(card)
+        return {
+                    "status": "success",
+                    "customer_id": customer_id,
+                    "card_id": card_id,
                 }
 
     def add_pet(self, pet):
@@ -1407,6 +1420,10 @@ clinic_sys = Clinic()
 async def root() -> dict:
     return {"Pet Shop": "Online"}
 
+@app.post("/card_information",tags=["create_user_information"])
+def add_card_information(customer_id :str) :
+    result = clinic_sys.create_card(customer_id)
+    return result
 
 @app.post("/Reservation", tags=["Reservation"])
 async def make_reservation(req: ReservationRequest):
