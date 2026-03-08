@@ -212,6 +212,10 @@ class RecordService:
     @property
     def is_paid(self):
         return self.__is_paid
+    
+    @is_paid.setter
+    def is_paid (self,paid = True) :
+        self.__is_paid = paid
 
     def append_sub_service(self, sub_service):
         self.__sub_service.append(sub_service)
@@ -499,7 +503,7 @@ class SilverMember(Member):
             return True
         
     def add_count_for_use_discount (self) :
-        if self.check_is_limit():
+        if not self.check_is_limit():
             self.__count_for_use_discount += 1
         
 class GoldMember(Member):
@@ -543,8 +547,12 @@ class PlatinumMember(Member):
 
     def add_rewards_card(self,rewards_card) :
         self.__rewards_card = rewards_card
+
+    @property
+    def get_rewards_card(self) :
+        return self.__rewards_card
     
-    def get_rewards_card (self) :
+    def use_rewards_card (self) :
         if self.__rewards_card.check_available() == True :
             self.delete_reward_card()
             return True
@@ -573,6 +581,10 @@ class RewardsCard :
             return True
         else :
             return False
+        
+    @property
+    def count (self) :
+        return self.__count_for_use_service
 
 class Coupon :
     def __init__(self, id):
@@ -761,134 +773,37 @@ class Clinic:
 
     def _setup_dummy_data(self):
         self.__employee.append(Doctor("D01", "Dr.Strange"))
-        self.__rooms.append(PrivateRoom("R01"))
-        self.__rooms.append(ShareRoom("R02"))
+        self.__rooms.append(PrivateRoom("PR01"))
+        self.__rooms.append(PrivateRoom("PR02"))
+        self.__rooms.append(PrivateRoom("PR03"))
+        self.__rooms.append(ShareRoom("SR01"))
+        self.__rooms.append(ShareRoom("SR02"))
+        
         # payment = None
-        c1 = Customer("C01", "Pingtale", "0999999999", "pingtale@email.com")
+        c1 = PlatinumMember("C01", "Pingtale", "0999999999", "pingtale@email.com", datetime.now().date())
         p1 = Pet("P01", "Niggy", "Dog", "Golden", 25, "C01")
         c1.add_pet(p1)
         c1.add_card(Card("1234-5678"))
-        # c1.deposit_to_card("1234-5678", 50000)
+        c1.deposit_to_card("1234-5678", 50000)
         self.add_customer(c1)
         self.add_pet(p1)
+        self.add_point(c1, 50000)
+        for i in range(5) :
+            self.point_to_coupon("C01")
 
-        # เพิ่มประวัติการรักษา
-        # medical_record = MedicalService(
-        #     record_id="1234",
-        #     type_service="Medical",
-        #     owner_obj=c1,
-        #     doctor_obj=Doctor("D01", "Dr.Strange"),
-        #     pet_obj=p1,
-        #     symptom=["เมาแฟบ", "เบื่อแล้วชีวิตนี้"],
-        #     medicine=["ยาม้า"],
-        #     vaccine=[],
-        #     price=1000000.0,
-        #     should_admit=True
-        # )
+        for i in range(9) :
+            c1.add_count_to_rewards_card()
 
-        # p1.add_medical_record(medical_record)
+        c2 = SilverMember("C02", "Donoka", "0888888888", "donoka@gmail.com", datetime.now().date())
+        p2 = Pet("P02", "Muffy", "Cat", "Siamese", 15, "C02")
+        c2.add_pet(p2)
+        c2.add_card(Card("1111-1111"))
+        c2.deposit_to_card("1111-1111", 50000)
+        self.add_customer(c2)
+        self.add_pet(p2)
+        for i in range(5) :
+            c2.add_count_for_use_discount()
 
-        # # # test api medical treatment (medical treatment ตอน get all)
-        # self.__medical_service.append(medical_record)
-
-        # # สร้างกล่อง Service test api (admit)
-        # dummy_big_service = RecordService(datetime.now())
-        # dummy_big_service.append_sub_service(medical_record)
-        # p1.append_big_service(dummy_big_service)
-
-        # ส่วนของ payment
-    
-        Bam = Customer("123445","bam","025687525","Bam@gmail.com")
-        Sarah = SilverMember("123123","sarah","0122586532","Saeah@gmail.com",datetime(2025,9,10))
-        Peem = GoldMember("123456","peem","0225556666","Peem@gmail.com" ,datetime(2025, 11, 11))
-        Jan = PlatinumMember("123457","jan","0678985489","Jan@gmail.com",datetime(2025, 12, 20))
-        
-        Bam_Card = Card("CardBam")
-        Sarah_Card = Card("CardSarah")
-        Peem_Card = Card("CardPeem")
-        Jan_Card = Card("CardJan")
-        
-        Bam.add_card(Bam_Card)
-        Bam.deposit_to_card("CardBam",50000)
-        Sarah.add_card(Sarah_Card)
-        Sarah.deposit_to_card("CardSarah",50000)
-        Peem.add_card(Peem_Card)
-        Peem.deposit_to_card("CardPeem",50000)
-        Jan.add_card(Jan_Card)
-        Jan.deposit_to_card("CardJan",50000)
-        
-        self.add_customer(Bam)
-        self.add_customer(Sarah)
-        self.add_customer(Peem)
-        self.add_customer(Jan)
-        
-        Golden = Pet("P02", "golden", "Dog", "Golden", 25, "123445")
-        Corgi  = Pet("P03", "corgi",  "Dog", "Corgi",  12, "123456")
-        Husky  = Pet("P04", "husky",  "Dog", "Husky",  20, "123456")
-        Catty = Pet("C01", "catty", "Cat", "Siamese", 14 ,"123457")
-        Mulki = Pet("C02", "mulki", "Cat", "Persian", 15 ,"123457")
-        Jibi = Pet("B01", "jibi", "Bird", "glassbird", 4, "123123")
-        
-        self.add_pet(Golden)
-        self.add_pet(Corgi)
-        self.add_pet(Husky)
-        self.add_pet(Catty)
-        self.add_pet(Mulki)
-        self.add_pet(Jibi)
-
-        Bam.add_pet(Golden)
-        Sarah.add_pet(Jibi)
-        Peem.add_pet(Corgi)
-        Peem.add_pet(Husky)
-        Jan.add_pet(Catty)
-        Jan.add_pet(Mulki)
-
-        # today = datetime.now()
-
-        # self.record_service("P02","123445","grooming",2000,today)
-        # self.record_service("P02","123445","hotel",5000,today,today + timedelta(days=3),"R01")
-
-        # self.record_service("B01","123123","grooming",3500,today)
-
-        # self.record_service("P04","123456","grooming",2000,today)
-        # self.record_service("P03","123456","grooming",2000,today)
-        # self.record_service("P04","123456","hotel",5000,today,today + timedelta(days=3),"R01")
-
-        # self.record_service("C01","123457","hotel",6500,today,today + timedelta(days=4),"R01")
-        # self.record_service("C01","123457","grooming",2000,today)
-        # self.record_service("C02","123457","grooming",3000,today)
-
-        self.add_point(Peem, 50000)
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-        self.point_to_coupon("123456")
-
-        self.add_point(Jan,50000)
-        self.point_to_coupon("123457")
-        self.point_to_coupon("123457")
-        self.point_to_coupon("123457")
-        self.point_to_coupon("123457")
-        self.point_to_coupon("123457")
-        self.point_to_coupon("123457")
-
-        Sarah.add_count_for_use_discount()
-        Sarah.add_count_for_use_discount()
-        Sarah.add_count_for_use_discount()
-        Sarah.add_count_for_use_discount()
-        Sarah.add_count_for_use_discount() # เคยลดแล้ว5ครั้ง เหลือลดอีกครั้ง
-
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card()
-        Jan.add_count_to_rewards_card() # 9แต้ม
-        
     # make service ในส่วน Grooming หรือ Boarding
     def record_service(self, customer_id ,pet_id):
         customer = self.get_customer_info(customer_id)
@@ -1076,6 +991,19 @@ class Clinic:
                 return "Not Member"
         else:
             return "Not found customer"
+        
+    def reward_card_count(self,customer_id) :
+        customer = self.get_customer_info(customer_id)
+        member = self.check_member(customer)
+        if member :
+            tier = customer.get_tier
+            if tier == "platinum" :
+                count = customer.get_rewards_card.count
+                return count
+            else :
+                return "Not platinum tier"
+        else :
+            return "Not member"
       
     def calculate_price_with_discount(self,price,discount) :
         if discount <= price :
@@ -1096,6 +1024,9 @@ class Clinic:
             money = method.total_card_money
             method.total_card_money = money - total_price
         return "Success"
+    
+    def set_paid_to_service(self,service) :
+        service.is_paid = True
 
     def create_service_and_pet_list(self, pet_list):
         list_pet_and_service = []
@@ -1125,6 +1056,9 @@ class Clinic:
             if service is not None:
                 service.calculate_total_price()
                 price += service.price
+
+        if price == 0 :
+            return "No order to pay"
         
         member = self.check_member(customer)
         if member == False :
@@ -1142,7 +1076,7 @@ class Clinic:
             if use_rw_card == True :
                 if tier == "silver" or tier == "gold" :
                     return "silver/gold cannot use reward card"
-                result = customer.get_rewards_card()
+                result = customer.use_rewards_card()
                 if result == True :
                     price = 0
                     return price 
@@ -1183,6 +1117,9 @@ class Clinic:
                 customer.add_count_for_use_discount()
         pet_list = customer.pet
         pet_service_list = self.create_service_and_pet_list(pet_list)
+        for pet in pet_list :
+            service = pet.search_unpaid_service()
+            self.set_paid_to_service(service)
         today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         payment = self.create_payment(customer_id,method,price,pet_service_list,today,point)
         customer.add_payment(payment)
@@ -1618,6 +1555,11 @@ def show_all_point_in_account(customer_id: str):
 def exchage_coupon(customer_id: str):
     result = clinic_sys.point_to_coupon(customer_id)
     return result
+
+@app.get("/rewarsd_card_count" , tags=["rewards card"])
+def reward_card_count (customer_id : str) :
+    count = clinic_sys.reward_card_count(customer_id)
+    return str(count)
 
 # def main():
 #     print("Hello from oop-project-basecode!")
