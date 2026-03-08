@@ -19,6 +19,7 @@ class RegisterRequest(BaseModel):
     customer_name: str
     phone_number: str
     email: str
+    customer_tier : str
 
 
 class RegisterPetRequest(BaseModel):
@@ -912,17 +913,22 @@ class Clinic:
                     "service": "grooming",
                 }
 
-    def create_card(self,customer_id) :
+    def register_card(self,customer_id,money) :
         customer = self.get_customer_info(customer_id)
         if customer == None :
-            return "Customer Not Found"
+            return {
+                "Status": "fail",
+                "Message": "Please register customer first !",
+            }
         card_id = self.generate_ID()
         card = Card(card_id)
+        card.deposit(money)
         customer.add_card(card)
         return {
-                    "status": "success",
-                    "customer_id": customer_id,
-                    "card_id": card_id,
+                    "Status": "success",
+                    "Customer_id": customer_id,
+                    "Card_id": card_id,
+                    "Money" : money
                 }
 
     def add_pet(self, pet):
@@ -957,8 +963,23 @@ class Clinic:
 
     def register_customer(self, data: RegisterRequest):
         customer_id = self.generate_ID()
-        customer = Customer(customer_id, data.customer_name,
-                            data.phone_number, data.email)
+        if data.customer_tier.lower() == "silver" :
+            customer = SilverMember(customer_id, data.customer_name,
+                            data.phone_number, data.email, datetime.now().date())
+        elif data.customer_tier.lower() == "gold" :
+            customer = GoldMember(customer_id, data.customer_name,
+                            data.phone_number, data.email, datetime.now().date())
+        elif data.customer_tier.lower() == "platinum" :
+            customer = PlatinumMember(customer_id, data.customer_name,
+                            data.phone_number, data.email, datetime.now().date())
+        elif data.customer_tier.lower() == None :
+            customer = Customer(customer_id, data.customer_name,
+                                data.phone_number, data.email)
+        else :
+            return {
+                "Status" : "fail",
+                "Message" : "invalid tier (tier must be silver/gold/platinum)"
+            }
         self.__customer.append(customer)
         return {
             "Status": "success",
@@ -966,6 +987,7 @@ class Clinic:
             "Customer_name": data.customer_name,
             "Phone_number": data.phone_number,
             "Email": data.email,
+            "Tier" : data.customer_tier
         }
 
     def register_pet(self, data: RegisterPetRequest):
@@ -1161,7 +1183,7 @@ class Clinic:
                 customer.add_count_for_use_discount()
         pet_list = customer.pet
         pet_service_list = self.create_service_and_pet_list(pet_list)
-        today = datetime.today()
+        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         payment = self.create_payment(customer_id,method,price,pet_service_list,today,point)
         customer.add_payment(payment)
         payment_slip = payment.create_payment_slip()
@@ -1469,9 +1491,9 @@ clinic_sys = Clinic()
 async def root() -> dict:
     return {"Pet Shop": "Online"}
 
-@app.post("/card_information",tags=["create_user_information"])
-def add_card_information(customer_id :str) :
-    result = clinic_sys.create_card(customer_id)
+@app.post("/RegisterCard",tags=["Register"])
+def add_card_information(customer_id :str , money : float) :
+    result = clinic_sys.register_card(customer_id ,money)
     return result
 
 @app.post("/RegisterCustomer", tags=["Register"])
