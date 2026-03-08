@@ -6,65 +6,18 @@ sequenceDiagram
 
         actor UI
         participant Clinic
-        participant Service
         participant Customer
         participant Member
-        participant Pet
         participant Payment
-        participant Coupon
         participant PaymentMethod
+        participant RewardsCard
 
         UI ->>+ Clinic : start_payment(customer_id,payment_type,money=None,card_ID=None,use_cp=False)
+        Clinic ->> Clinic : start_calculate_total_price(customer_id,use_cp=False,use_rw_card=False)
         loop search_customer
             Clinic ->>+ Customer : get_customer_info(customer_id)
             Customer -->>- Clinic : return Customer
         end
-        alt customer == None
-            Clinic -->> UI : return Customer not found
-        end
-        Clinic ->>+ Customer : pet(getter)
-        Customer -->>- Clinic : return pet_list
-
-        loop each pet in pet_list
-            loop search service in pet
-                Clinic ->>+ Pet : search_unpaid_service()
-                Pet ->>+ Service : is_paid()
-                Service -->>- Pet : return True / False
-                alt is_paid == False
-                    Pet -->>- Clinic : return service 
-                end
-            end
-            
-            alt service is not None
-                Clinic ->> Clinic : append in service_list
-            end
-        end
-        loop for service in service_list
-            Clinic ->>+ Service : sum_price_in_each_service()
-            Service -->>- Clinic : return sum_price
-        end
-        Clinic ->>+ Member : check_member(customer)
-        Member -->>- Clinic : return result(True/False)
-        alt is member(False)
-            alt use_cp = True
-                Clinic -->> UI : Not a member
-            end
-        else is member(True)
-            Clinic ->> Clinic : calculate_discount(customer_id,sum_price)
-            alt use_cp = True
-                Clinic ->>+ Member : get_coupon(customer)
-                Member -->>- Clinic : return coupon
-                alt coupon == None 
-                    Clinic -->> UI : return not have coupon
-                else coupon != None
-                    Clinic ->>+ Coupon : use_coupon(customer)
-                    Coupon -->>- Clinic : return discount
-                end
-            end
-        end
-        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
-
-        %% Service -->>- Clinic : return price
         Clinic ->> Clinic : get_payment_method_object(customer,payment_type,card_ID)
         alt payment_type == qrcode
             Clinic ->>+ PaymentMethod : <<create>>(id)
@@ -86,7 +39,6 @@ sequenceDiagram
         end
         %% Clinic ->>+ PaymentMethod : check_payment_type(payment_type)
         %% PaymentMethod -->>- Clinic : return PaymentMethod
-        Clinic ->> Clinic : calculate_total_price(customer,sum_price,use_cp=None)
         Clinic ->> Clinic : pay(price,PaymentMethod,money=None)  
         alt PaymentMethod == QRCode 
             Clinic ->>+ PaymentMethod : validate_money(money,price)
@@ -102,15 +54,33 @@ sequenceDiagram
             end
             Clinic ->>+ PaymentMethod : total_card_money(getter)
             PaymentMethod -->>- Clinic : return total_card_money
-            Clinic ->>+ PaymentMethod : total_card_money(total_card_money - 50)(setter)
+            Clinic ->>+ PaymentMethod : total_card_money(total_card_money - price)(setter)
             PaymentMethod -->>- Clinic : return success
         end
+        Clinic ->>+ Member : check_member(customer)
+        Member -->>- Clinic : return result(True/False)
         alt is member(True)
             Clinic ->>+ Member : calculate_point(price)
             Member ->> Member : add_point()
             Member -->>- Clinic : return point
+            Clinic ->>+ Member : get_tier()
+            Member -->>- Clinic : return tier
+            alt tier = platinum
+                Clinic ->>+ Member : add_count_to_rewards_card() 
+                alt rewards_card = None
+                    Member ->>+ RewardsCard : <<create>>
+                    RewardsCard -->>- Member : return rewards_card(Instance)
+                    Member ->> Member : add_rewards_card(rewards_card)
+                else
+                    Member ->>+ RewardsCard : add_count() 
+                    RewardsCard -->>- Member : return Success
+                end
+                Member -->>- Clinic : return Success
+            else tier = silver
+                Clinic ->>+ Member : add_count_for_use_discount()
+                Member -->>- Clinic :return success
+            end
         end
-        Clinic ->> Clinic : create_service_and_pet_list(pet_list,service_list)
         Clinic ->> Clinic : get_today()
         %% Service -->>- Clinic : return point
         Clinic ->>+ Payment : create_payment(customer_id,method,total_price,list_pet_and_service,today,point)
