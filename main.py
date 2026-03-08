@@ -488,7 +488,7 @@ class SilverMember(Member):
             return True
         
     def add_count_for_use_discount (self) :
-        if self.__count_for_use_discount < 6 :
+        if self.check_is_limit():
             self.__count_for_use_discount += 1
         
 class GoldMember(Member):
@@ -654,7 +654,7 @@ class Doctor(Employee):
 
         medical_service = MedicalService(
             record_id,
-            "medical",
+            "Medical",
             customer,   # customer object
             self,       # doctor object
             pet,        # pet object
@@ -890,10 +890,11 @@ class Clinic:
         
         if big_service == None:
             big_service = RecordService(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            pet.append_big_service(big_service)
         if big_service.check_has_grooming_service() :
             return {"Status": "Error", "Message": "Grooming service for today already create"}
         big_service.append_sub_service(grooming)
-        pet.append_big_service(big_service)
+        
         return {
                     "status": "success",
                     "customer_id": customer_id,
