@@ -15,6 +15,21 @@ app = FastAPI()
 # Base Model
 
 
+class RegisterRequest(BaseModel):
+    customer_name: str
+    phone_number: str
+    email: str
+
+
+class RegisterPetRequest(BaseModel):
+    pet_name: str
+    type_pet: str
+    species: str
+    weight: str
+    customer_id: str
+    aggressive: bool = False
+
+
 class AdmitRequest(BaseModel):
     doctor_id: str
     petID: str
@@ -342,10 +357,6 @@ class Pet:
     @property
     def name(self):
         return self.__name
-    
-    @property
-    def service(self):
-        return self.__service
 
     def search_unpaid_service(self):
         for service in self.__service:
@@ -371,7 +382,6 @@ class Pet:
 
     def add_medical_record(self, medical_record):
         self.__medical_record.append(medical_record)
-
 
 
 class Customer:
@@ -450,7 +460,7 @@ class Member(Customer):
 
     def __init__(self, customer_id, name, phone_number, email, sign_up_date, tier, rate, point=0):
         super().__init__(customer_id, name, phone_number, email)
-        self.__signnp_date = sign_up_date
+        self.__signup_date = sign_up_date
         self.__point = point
         self.__tier = tier
         self.__rate = rate
@@ -945,6 +955,44 @@ class Clinic:
         else:
             return False
 
+    def register_customer(self, data: RegisterRequest):
+        customer_id = self.generate_ID()
+        customer = Customer(customer_id, data.customer_name,
+                            data.phone_number, data.email)
+        self.__customer.append(customer)
+        return {
+            "Status": "success",
+            "Customer_id": customer_id,
+            "Customer_name": data.customer_name,
+            "Phone_number": data.phone_number,
+            "Email": data.email,
+        }
+
+    def register_pet(self, data: RegisterPetRequest):
+        customer = self.get_customer_info(data.customer_id)
+        if customer:
+            petID = self.generate_ID()
+            pet = Pet(petID, data.pet_name, data.type_pet, data.species,
+                      data.weight, data.customer_id, data.aggressive)
+            customer.add_pet(pet)
+            self.__pet.append(pet)
+
+            return {
+                "Status": "success",
+                "Pet_id": petID,
+                "Pet_name": data.pet_name,
+                "Type_pet": data.type_pet,
+                "Species": data.species,
+                "Weight": data.weight,
+                "Customer_id": data.customer_id,
+                "Aggressive": data.aggressive,
+            }
+        else:
+            return {
+                "Status": "fail",
+                "Message": "Please register customer first !",
+            }
+
     def get_payment_method_object(self, customer, payment_type, card_ID=None):
         payment_type = payment_type.lower()
         if payment_type == "qrcode":
@@ -1426,6 +1474,18 @@ def add_card_information(customer_id :str) :
     result = clinic_sys.create_card(customer_id)
     return result
 
+@app.post("/RegisterCustomer", tags=["Register"])
+async def make_register(data: RegisterRequest):
+    register_customer = clinic_sys.register_customer(data)
+    return register_customer
+
+
+@app.post("/RegisterPet", tags=["Register"])
+async def make_register_pet(data: RegisterPetRequest):
+    register_pet = clinic_sys.register_pet(data)
+    return register_pet
+
+
 @app.post("/Reservation", tags=["Reservation"])
 async def make_reservation(req: ReservationRequest):
     result = clinic_sys.create_reservation(
@@ -1566,4 +1626,21 @@ if __name__ == "__main__":
 #   "pet_id": "P01",
 #   "service_type": "Medical",
 #   "datetime_str": "2023-10-27 10:00"
+# }
+
+# ลงทะเบียนลูกค้า
+# {
+#   "customer_name": "Somsri",
+#   "phone_number": "12345",
+#   "email": "eiei@gmail.com"
+# }
+
+# ลงทะเบียนสัตว์
+# {
+#   "pet_name": "pingtale",
+#   "type_pet": "ping",
+#   "species": "tale",
+#   "weight": "5",
+#   "customer_id": "ลงลูกค้าก่อนค่อยcopyมาใส่",
+#   "aggressive": true
 # }

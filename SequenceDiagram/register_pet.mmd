@@ -1,0 +1,22 @@
+sequenceDiagram
+    actor Customer
+    participant Clinic
+    participant CustomerClass
+    participant Pet
+
+    Customer ->>+ Clinic: register_pet(RegisterPetRequest)
+    loop search customer
+        Clinic ->>+ CustomerClass: get_customer_info(customer_id)
+        CustomerClass -->>- Clinic: return customer
+    end
+    alt customer != None
+        Clinic ->> Clinic: generate_ID()
+        Clinic ->>+ Pet: create_pet()
+        Pet -->>- Clinic: return pet
+        Clinic ->>+ CustomerClass: append_pet_to_customer(pet)
+        CustomerClass -->>- Clinic: return add complete
+        Clinic ->> Clinic: append(pet)
+        Clinic -->> Customer: return register pet is complete
+    else customer == None
+        Clinic -->>- Customer: return failed, please register customer first 
+    end

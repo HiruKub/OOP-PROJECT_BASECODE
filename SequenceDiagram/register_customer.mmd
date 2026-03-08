@@ -1,0 +1,10 @@
+sequenceDiagram
+    actor Customer
+    participant Clinic
+    participant CustomerClass
+    Customer ->>+ Clinic: register_customer(RegisterRequest)
+    Clinic ->> Clinic: generate_ID()
+    Clinic ->>+ CustomerClass: create_customer()
+    CustomerClass -->>- Clinic: return customer
+    Clinic ->> Clinic: append(customer)
+    Clinic -->>- Customer: return add complete
