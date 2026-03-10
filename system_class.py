@@ -294,6 +294,10 @@ class Pet:
     @property
     def vaccine(self):
         return self.__vaccine
+    
+    @property
+    def service(self):
+        return self.__service
 
     @property
     def aggressive(self):
