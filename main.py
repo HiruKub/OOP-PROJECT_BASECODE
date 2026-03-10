@@ -1299,7 +1299,7 @@ class Clinic:
             else:
                 self.__notification.send_confirmation("SMS", reservation_id)
 
-            if service_type.lower == "hotel":
+            if service_type.lower() == "hotel":
                 return {
                     "status": "success",
                     "customer_name": customer.name,
@@ -1397,7 +1397,7 @@ class Clinic:
         
         has_admit = unpaid_service.check_has_hotel_admit_service()
         if has_admit :
-            return {"Status": "Error", "Message": "Grooming service for today already create"}
+            return {"Status": "Error", "Message": "Admit service for today already create"}
 
         resource = None
         time_start = datetime.now()
