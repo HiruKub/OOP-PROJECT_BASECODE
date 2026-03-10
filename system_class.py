@@ -703,7 +703,7 @@ class Doctor(Employee):
 # Room
 
 
-class Room:
+class Room(ABC):
     price_per_day = 0
 
     def __init__(self, room_id, room_type, capacity=1):
