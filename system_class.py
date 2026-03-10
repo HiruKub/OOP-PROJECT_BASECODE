@@ -953,7 +953,7 @@ class Clinic:
         if customer:
             petID = self.generate_ID()
             pet = Pet(petID, data.pet_name, data.type_pet, data.species,
-                      data.weight, data.customer_id, data.aggressive)
+                        data.weight, data.customer_id, data.aggressive)
             customer.add_pet(pet)
             self.__pet.append(pet)
 
@@ -1241,6 +1241,8 @@ class Clinic:
                     "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
                 }
 
+            
+            
             if payment_method.lower() == "card":
                 if not customer.card:
                     return {"status": "fail", "message": "Customer has no card."}
@@ -1249,7 +1251,7 @@ class Clinic:
             elif payment_method.lower() == "qrcode":
                 pass
             else:
-                return {"status": "fail", "message": "Invalid payment method"}
+                return {"status": "fail", "message": "Invalid payment method .payment method require card or qrcode"}
 
             original_time_duration = end_dt - start_dt
             staying_time = max(1, math.ceil(original_time_duration / timedelta(days=1)))
@@ -1262,6 +1264,12 @@ class Clinic:
                 room_type = "privateroom"
             elif room_type == "share":
                 room_type = "shareroom"
+                
+            if room_type != "privateroom" or room_type != "shareroom":
+                return {
+                    "status": "fail",
+                    "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
+                }
 
             for room in self.__rooms:
                 if room_type.lower() == room.room_type and room.book_room(start_dt, end_dt):
