@@ -6,9 +6,18 @@ from base_model_class import *
 
 
 class Notification:
+    def __init__(self):
+        self.__notification = []
+        pass
+    
     def send_confirmation(self, method: str, reservation_id: str):
-        print(f"[{method}] Sent confirmation for Reservation ID: {reservation_id}")
+        message = f"[{method}] Sent confirmation for Reservation ID: {reservation_id}"
+        print(message)
+        self.__notification.append(message)
         return True
+    
+    def get_all_notification(self):
+        return self.__notification
 
 
 # Reservation Class
@@ -373,6 +382,7 @@ class Customer:
         self.__reservation = []
         self.__payment_list = []
         self.__card = []
+        self.__notification = Notification()
 
     def add_pet(self, pet: Pet):
         self.__pet.append(pet)
@@ -408,6 +418,9 @@ class Customer:
             if card == card_id:
                 return True
         return False
+    
+    def get_all_notification(self):
+        return self.__notification.get_all_notification()
 
     @property
     def pet(self):
