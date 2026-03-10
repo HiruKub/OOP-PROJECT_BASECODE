@@ -471,7 +471,10 @@ class GoldMember(Member):
             return None
 
     def delete_coupon(self):
-        self.__coupon.pop(0)
+        try:
+            self.__coupon.pop(0)
+        except IndexError:
+            return "No coupon"
 
 class PlatinumMember(Member):
     # DiscountRate = 0.1
@@ -616,6 +619,10 @@ class Doctor(Employee):
     def create_medical_service(self, data: TreatmentRequest, clinic_obj):
 
         customer = clinic_obj.get_customer_info(data.owner_id)
+        
+        if customer == None:
+            return {"Status": "Error", "Message": "Customer is not found"}
+        
         pet = customer.get_pet_info(data.petID)
         if pet == None :
             return {"Status": "Error", "Message": "Pet does not belong to owner"}
@@ -1085,14 +1092,15 @@ class Clinic:
     # หากไม่ได้ใส่ time_end มาให้
     def convert_str_to_time(self, time_start: str, time_end: str):
         time_format = "%Y-%m-%d %H:%M"
-        start_dt = datetime.strptime(time_start, time_format)
-
-        if time_end:
-            end_dt = datetime.strptime(time_end, time_format)
-        else:
-            end_dt = start_dt + timedelta(hours=1)
-
-        return start_dt, end_dt
+        try:
+            start_dt = datetime.strptime(time_start, time_format)
+            if time_end:
+                end_dt = datetime.strptime(time_end, time_format)
+            else:
+                end_dt = start_dt + timedelta(hours=1)
+            return start_dt, end_dt
+        except ValueError:
+            return None, None
 
     def create_reservation(
         self,
@@ -1120,6 +1128,15 @@ class Clinic:
             resource = "Grooming"
 
         elif service_type.lower() == "hotel":
+            
+            for big_service in pet.service:
+                if big_service.is_paid == False:
+                    if "Hotel" in big_service.get_service_list():
+                        return {
+                            "status": "fail", 
+                            "message": f"Pet '{pet.name}' already has a hotel reservation"
+                        }
+
             if not payment_method:
                 return {
                     "status": "fail",
@@ -1171,7 +1188,7 @@ class Clinic:
                         customer, payment_method, card_id)
 
                     if payment_obj == None:
-                        room.busy_slot.remove(time_start, time_end)
+                        room.busy_slot.remove(start_dt, end_dt)
                         resource = None
                         return {
                             "status": "fail",
