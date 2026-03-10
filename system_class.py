@@ -939,6 +939,9 @@ class Clinic:
         customer = self.get_customer_info(customer_id)
         if customer != None:
             if self.check_member(customer):
+                tier = customer.get_tier
+                if tier == "silver" :
+                    return "silver tier cannot use coupon"
                 point = customer.point
                 if point >= 50:
                     coupon = self.create_coupon()
