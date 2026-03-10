@@ -187,6 +187,12 @@ class RecordService:
             if isinstance(service, GroomingService):
                 return True
         return False
+    
+    def check_has_hotel_admit_service(self) :
+        for service in self.__sub_service:
+            if isinstance(service, HotelService) and service.is_from_reservation == False:
+                return True
+        return False
 
 # ขอเพิ่ม Service คร่าวๆ ไว้ใช้ตอน Payment
 
@@ -488,12 +494,17 @@ class PlatinumMember(Member):
 
     @property
     def get_rewards_card(self) :
-        return self.__rewards_card
+        if self.__rewards_card is not None :
+            return self.__rewards_card
+        else :
+            return "Not have rewards card"
     
-    def use_rewards_card (self) :
-        if self.__rewards_card.check_available() == True :
-            self.delete_reward_card()
-            return True
+    def use_rewards_card (self,pay = False) :
+        if self.__rewards_card is not None :
+            if self.__rewards_card.check_available() == True :
+                if pay :
+                    self.delete_reward_card()
+                return True
         return False
     
     def delete_reward_card(self) :
@@ -936,8 +947,10 @@ class Clinic:
         if member :
             tier = customer.get_tier
             if tier == "platinum" :
-                count = customer.get_rewards_card.count
-                return count
+                rewards_card = customer.get_rewards_card
+                if type(rewards_card) is str:
+                    return rewards_card
+                return rewards_card.count
             else :
                 return "Not platinum tier"
         else :
@@ -981,7 +994,7 @@ class Clinic:
                           price, list_pet_and_service, today, point)
         return payment
 
-    def start_calculate_total_price(self,customer_id,use_cp,use_rw_card) :
+    def start_calculate_total_price(self,customer_id,use_cp,use_rw_card,pay=False) :
         customer = self.get_customer_info(customer_id)
         if (customer == None) :
             return "Customer not found"
@@ -1007,14 +1020,14 @@ class Clinic:
             rate = customer.get_rate
             if tier == "silver" :
                 is_limit = customer.check_is_limit()
-                if is_limit == False :
-                    discount = price*rate
-                    price = self.calculate_price_with_discount(price,discount)
-                    # customer.add_count_for_use_discount()
+                if is_limit == True :
+                    return price
+            discount = price*rate
+            price = self.calculate_price_with_discount(price,discount)
             if use_rw_card == True :
                 if tier == "silver" or tier == "gold" :
                     return "silver/gold cannot use reward card"
-                result = customer.use_rewards_card()
+                result = customer.use_rewards_card(pay)
                 if result == True :
                     price = 0
                     return price 
@@ -1032,7 +1045,7 @@ class Clinic:
         return price
     
     def start_payment(self,customer_id,payment_type,card_ID=None,use_cp=False,use_rw_card=False,money=None) :
-        price = self.start_calculate_total_price(customer_id,use_cp,use_rw_card)
+        price = self.start_calculate_total_price(customer_id,use_cp,use_rw_card,pay=True)
         if type(price) is str:
             return price
         
@@ -1087,6 +1100,7 @@ class Clinic:
         room_type=None,
         payment_method=None,
         card_id=None,
+        money=None
     ):
         resource = None
         price = 0
@@ -1098,10 +1112,10 @@ class Clinic:
 
         start_dt, end_dt = self.convert_str_to_time(time_start, time_end)
 
-        if service_type == "Grooming":
+        if service_type.lower() == "grooming":
             resource = "Grooming"
 
-        elif service_type == "Hotel":
+        elif service_type.lower() == "hotel":
             if not payment_method:
                 return {
                     "status": "fail",
@@ -1160,7 +1174,7 @@ class Clinic:
                             "message": "CardID Not Found.",
                         }
 
-                    pay_result = self.pay(price, payment_obj, price)
+                    pay_result = self.pay(price, payment_obj, money)
 
                     if pay_result != "Success":
                         room.busy_slot.remove((start_dt, end_dt))
@@ -1179,7 +1193,7 @@ class Clinic:
                         payment_ID=payment_ID,
                         method=payment_obj,
                         price=price,
-                        service_list=[
+                        pet_service_list=[
                             f"Pre-paid Hotel ({room.get_details()})"],
                         date=today,
                         point=point
@@ -1191,7 +1205,7 @@ class Clinic:
                     pet.append_big_service(big_service)
                     break
 
-        elif service_type == "Medical":
+        elif service_type.lower() == "medical":
             for emp in self.__employee:
                 if emp.Type == "Doctor" and emp.get_avaliable_work(time_start):
                     if emp.update_timeslot(time_start):
@@ -1200,12 +1214,12 @@ class Clinic:
 
         if resource:
             reservation_id = str(uuid.uuid1())[:8]
-            if service_type == "Grooming":
+            if service_type.lower() == "grooming":
                 new_reservation = GroomingReservation(
                     reservation_id, customer, pet, start_dt
                 )
 
-            elif service_type == "Hotel":
+            elif service_type.lower() == "hotel":
                 new_reservation = HotelReservation(
                     reservation_id,
                     customer,
@@ -1219,7 +1233,7 @@ class Clinic:
 
                 # pet.add_boarding_service(resource)
 
-            elif service_type == "Medical":
+            elif service_type.lower() == "medical":
                 new_reservation = MedicalReservation(
                     reservation_id, customer, pet, start_dt, resource
                 )
@@ -1232,7 +1246,7 @@ class Clinic:
             else:
                 self.__notification.send_confirmation("SMS", reservation_id)
 
-            if service_type == "Hotel":
+            if service_type.lower() == "hotel":
                 return {
                     "status": "success",
                     "customer_name": customer.name,
@@ -1327,6 +1341,10 @@ class Clinic:
                 "status": "Admit is failed",
                 "message": "No active medical service session found for this pet"
             }
+        
+        has_admit = unpaid_service.check_has_hotel_admit_service()
+        if has_admit :
+            return {"Status": "Error", "Message": "Admit service for today already create"}
 
         resource = None
         time_start = datetime.now()
