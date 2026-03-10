@@ -819,6 +819,8 @@ class Clinic:
     # make service ในส่วน Grooming หรือ Boarding
     def record_service(self, customer_id ,pet_id):
         customer = self.get_customer_info(customer_id)
+        if customer == None:
+            return {"Status": "Error", "Message": "Customer is not found"}
         pet = customer.get_pet_info(pet_id)
         if pet == None :
             return {"Status": "Error", "Message": "Pet does not belong to owner"}
@@ -1448,13 +1450,14 @@ class Clinic:
 
     def medical_treatment(self, data: TreatmentRequest):
         doctor = self.get_doctor_info(data.doctor_id)
-        customer = self.get_customer_info(data.owner_id)
-        pet = customer.get_pet_info(data.petID)
-
         if doctor == None:
             return {"Status": "Error", "Message": "Doctor is not found"}
+        
+        customer = self.get_customer_info(data.owner_id)
         if customer == None:
             return {"Status": "Error", "Message": "Customer is not found"}
+        
+        pet = customer.get_pet_info(data.petID)
         if pet == None :
             return {"Status": "Error", "Message": "Pet does not belong to owner"}
 
