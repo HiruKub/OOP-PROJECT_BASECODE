@@ -1268,7 +1268,7 @@ class Clinic:
             if room_type != "privateroom" and room_type != "shareroom":
                 return {
                     "status": "fail",
-                    "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
+                    "message": "Hotel Required Room type PrivateRoom or ShareRoom",
                 }
 
             for room in self.__rooms:
