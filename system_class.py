@@ -1238,7 +1238,7 @@ class Clinic:
             if not room_type:
                 return {
                     "status": "fail",
-                    "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
+                    "massage": "Hotel Required Room type only PrivateRoom or ShareRoom",
                 }
 
             
