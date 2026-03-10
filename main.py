@@ -1125,10 +1125,7 @@ class Clinic:
             point = self.add_point(customer,price) 
             tier = customer.get_tier
             if tier == "platinum" :
-                if use_rw_card and customer.use_rewards_card() :
-                    customer.delete_reward_card()
-                else :
-                    customer.add_count_to_rewards_card()
+                customer.add_count_to_rewards_card()
             elif tier == "silver" :
                 customer.add_count_for_use_discount()
         pet_list = customer.pet
