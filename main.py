@@ -2,35 +2,41 @@ from fastapi import FastAPI
 import uvicorn
 from fastapi import Query
 from system_class import *
+from fastmcp import FastMCP
 
-app = FastAPI()
+mcp = FastMCP("Demo")
 clinic_sys = Clinic()
 
 # fast api
 
-@app.get("/", tags=['root'])
-async def root() -> dict:
+@mcp.tool()
+def root() -> dict:
+    """Start Program"""
     return {"Pet Shop": "Online"}
 
-@app.post("/RegisterCard",tags=["Register"])
+@mcp.tool()
 def add_card_information(customer_id :str , money : float) :
+    """add card information after register customer"""
     result = clinic_sys.register_card(customer_id ,money)
     return result
 
-@app.post("/RegisterCustomer", tags=["Register"])
-async def make_register(data: RegisterRequest):
+@mcp.tool()
+def make_register(data: RegisterRequest):
+    """register customer information"""
     register_customer = clinic_sys.register_customer(data)
     return register_customer
 
 
-@app.post("/RegisterPet", tags=["Register"])
-async def make_register_pet(data: RegisterPetRequest):
+@mcp.tool()
+def make_register_pet(data: RegisterPetRequest):
+    """register pet information after register customer"""
     register_pet = clinic_sys.register_pet(data)
     return register_pet
 
 
-@app.post("/Reservation", tags=["Reservation"])
-async def make_reservation(req: ReservationRequest):
+@mcp.tool()
+def make_reservation(req: ReservationRequest):
+    """make an reservation by customer_id and pet_id"""
     result = clinic_sys.create_reservation(
         req.customer_id,
         req.pet_id,
@@ -39,32 +45,35 @@ async def make_reservation(req: ReservationRequest):
         req.datetime_end_str,
         req.room_type,
         req.payment_method,
-        req.card_id,
+        req.card_id
     )
     return result
 
-@app.get("/Reservation/{customer_id}", tags=["Reservation"])
+@mcp.tool()
 def get_all_reservations(customer_id: str):
-
+    """show detail of all reservation that customer have"""
     result = clinic_sys.get_customer_reservations(customer_id)
     return result
 
-@app.delete("/CancelReservation", tags=["Reservation"])
-async def cancel_reservation(customer_id: str, pet_id: str, reservation_id: str):
+@mcp.tool()
+def cancel_reservation(customer_id: str, pet_id: str, reservation_id: str):
+    """cancel reservation after make reservation"""
     result = clinic_sys.cancel_reservation(customer_id, pet_id, reservation_id)
     return result
 
-@app.get("/calculate_price/{customer_id}", tags=["Payment"])
+@mcp.tool()
 def calculate_price(
     customer_id: str,
-    use_cp: bool = Query(False),
-    use_rw_card: bool = Query(False),
+    use_cp: bool = False,
+    use_rw_card: bool = False
 ):
+    """calculate total price which already use discount by customer_id after make service"""
     price = clinic_sys.start_calculate_total_price(customer_id, use_cp, use_rw_card)
     return str(price)
 
-@app.get("/pet/{pet_id}/services", tags=["Test & Check"])
+@mcp.tool()
 def check_pet_services(pet_id: str):
+    """check all service and price but not use discount yet"""
     pet = clinic_sys.get_pet_info(pet_id)
     if not pet:
         return {"status": "fail", "message": "Pet not found"}
@@ -95,8 +104,9 @@ def check_pet_services(pet_id: str):
         "history": service_history
     }
 
-@app.post("/payment/{customer_id}", tags=["Payment"])
+@mcp.tool()
 def payment(customer_id: str, req: PaymentRequest):
+    """start to pay after make service"""
     result = clinic_sys.start_payment(
         customer_id,
         req.payment_type,
@@ -107,14 +117,15 @@ def payment(customer_id: str, req: PaymentRequest):
     )
     return (result)
 
-@app.post("/grooming_record" ,  tags = ["Grooming Service"])
+@mcp.tool()
 def record_grooming_service(customer_id :str ,pet_id : str) :
+    """make grooming service after reservation or walkin"""
     result = clinic_sys.record_service(customer_id,pet_id)
     return result
 
-@app.post("/medical_treatment", tags=["Medical Treatment"])
-async def add_medical_treatment(data: TreatmentRequest):
-
+@mcp.tool()
+def add_medical_treatment(data: TreatmentRequest):
+    """make medical treatment(after medical reservation) you will role as doctor"""
     medical_treatment = clinic_sys.medical_treatment(data)
 
     if medical_treatment["Status"] == "Success":
@@ -127,32 +138,37 @@ async def add_medical_treatment(data: TreatmentRequest):
             "Message": medical_treatment["Message"]
         }
 
-@app.get("/medical_treatment", tags=["Medical Treatment"])
+@mcp.tool()
 async def get_medical_treatments():
+    """get all medical treatment after make medical"""
     return {
         "Data": clinic_sys.get_all_medical_record()
     }
 
 
-@app.post("/admit", tags=["Admit"])
+@mcp.tool()
 async def add_admit(data: AdmitRequest):
+    """admit pet to room (hotel service) after make an medical service"""
     admit = clinic_sys.start_pet_admit(data)
     return admit
 
 
-@app.get("/exchange_coupon", tags=["exchange coupon"])
+@mcp.tool()
 def show_all_point_in_account(customer_id: str):
+    """show all point in member by customer_id"""
     result = clinic_sys.show_all_point_in_member(customer_id)
     return result
 
 
-@app.post("/exchange_coupon", tags=["exchange coupon"])
+@mcp.tool()
 def exchage_coupon(customer_id: str):
+    """exchange point to coupon"""
     result = clinic_sys.point_to_coupon(customer_id)
     return result
 
-@app.get("/rewarsd_card_count" , tags=["rewards card"])
+@mcp.tool()
 def reward_card_count (customer_id : str) :
+    """show count for use service in our clinic that collect in rewards card"""
     count = clinic_sys.reward_card_count(customer_id)
     return str(count)
 
