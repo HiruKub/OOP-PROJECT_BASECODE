@@ -1,5 +1,6 @@
 from system_class import *
 from fastmcp import FastMCP
+from typing import Literal
 
 mcp = FastMCP("Demo")
 clinic_sys = Clinic()
@@ -35,11 +36,11 @@ def make_register_pet(data: RegisterPetRequest):
 def make_reservation(
     customer_id: str, 
     pet_id: str, 
-    service_type: str, 
+    service_type: Literal["Hotel", "Medical", "Grooming"], 
     datetime_start_str: str, 
     datetime_end_str: str = None, 
-    room_type: str = None, 
-    payment_method: str = None, 
+    room_type: Literal["PrivateRoom", "ShareRoom"] = None, 
+    payment_method: Literal["card", "qrcode"] = None,
     card_id: str = None,
     money: float = None
 ):
