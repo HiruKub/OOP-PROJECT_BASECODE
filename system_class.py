@@ -1265,7 +1265,7 @@ class Clinic:
             elif room_type == "share":
                 room_type = "shareroom"
                 
-            if room_type != "privateroom" or room_type != "shareroom":
+            if room_type != "privateroom" and room_type != "shareroom":
                 return {
                     "status": "fail",
                     "massage": "Hotel Required Room type PrivateRoom or ShareRoom",
