@@ -11,8 +11,10 @@ participant GroomingService
 
 employee ->>+ Clinic : record_service(pet_id)
 loop
-    Clinic ->>+ Pet : get_pet_info(pet_id)
-    Pet -->>- Clinic : return pet
+    Clinic->>+Customer: get_pet_info(pet_id)
+    Customer ->>+ Pet : (getter) pet_id()
+    Pet -->>- Customer : return pet_id
+    Customer-->>-Clinic: return pet_object
 end
 alt pet == None
     Clinic -->> employee : return Pet not found

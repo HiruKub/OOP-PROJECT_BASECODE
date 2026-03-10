@@ -12,9 +12,10 @@ sequenceDiagram
 
         UI ->>+ Clinic : exchange_coupon(customer_ID)
 
-        Clinic ->>+ Customer : search_customer(customer_ID)
-        Customer -->>- Clinic : return Customer
-
+        loop
+            Clinic ->>+ Customer : search_customer(customer_ID)
+            Customer -->>- Clinic : return Customer
+        end
         alt customer not found 
             Clinic -->> UI : return Customer not found
         end
@@ -23,22 +24,27 @@ sequenceDiagram
 
         alt not member
             Clinic -->> UI : return Not member
+        else is member
+            Clinic ->>+ Member : get_tier()
+            Member -->>- Clinic : return tier
+            alt tier == silver 
+                Clinic -->> UI : return silver tier cannot use coupon
+            end
+
+            Clinic ->>+ Member : get_point()
+            Member -->>- Clinic : return point
+
+            alt point < 50
+                Clinic -->> UI : return Not enough point
+            end
+
+            Clinic ->>+ Coupon : create_coupon()
+            Coupon -->>- Clinic : return Coupon
+
+            Clinic ->>+ Member : add_coupon(Coupon)
+            Member -->>- Clinic : return Success
+
+            Clinic ->>+ Member : remove_point(50)
+            Member -->>- Clinic : return Success
+            Clinic -->>- UI : return Success
         end
-
-        Clinic ->>+ Member : get_point()
-        Member -->>- Clinic : return point
-
-        alt point < 50
-            Clinic -->> UI : return Not enough point
-        end
-
-        Clinic ->>+ Coupon : create_coupon()
-        Coupon -->>- Clinic : return Coupon
-
-        Clinic ->>+ Member : add_coupon(Coupon)
-        Member -->>- Clinic : return Success
-
-        Clinic ->>+ Member : remove_point(50)
-        Member -->>- Clinic : return Success
-
-        Clinic -->>- UI : return Success
