@@ -32,19 +32,35 @@ def make_register_pet(data: RegisterPetRequest):
 
 
 @mcp.tool()
-def make_reservation(req: ReservationRequest):
-    """make an reservation by customer_id and pet_id"""
-    result = clinic_sys.create_reservation(
-        req.customer_id,
-        req.pet_id,
-        req.service_type,
-        req.datetime_start_str,
-        req.datetime_end_str,
-        req.room_type,
-        req.payment_method,
-        req.card_id
+def make_reservation(
+    customer_id: str, 
+    pet_id: str, 
+    service_type: str, 
+    datetime_start_str: str, 
+    datetime_end_str: str = None, 
+    room_type: str = None, 
+    payment_method: str = None, 
+    card_id: str = None,
+    money: float = None
+):
+    """make a reservation. datetime format strictly 'YYYY-MM-DD HH:MM'"""
+    try:
+        datetime.strptime(datetime_start_str, "%Y-%m-%d %H:%M")
+        if datetime_end_str:
+            datetime.strptime(datetime_end_str, "%Y-%m-%d %H:%M")
+    except ValueError:
+        return {"Status": "fail", "message": "Invalid datetime format. Claude, please use exactly 'YYYY-MM-DD HH:MM'"}
+
+    if datetime_end_str:
+        start_dt = datetime.strptime(datetime_start_str, "%Y-%m-%d %H:%M")
+        end_dt = datetime.strptime(datetime_end_str, "%Y-%m-%d %H:%M")
+        if end_dt <= start_dt:
+            return {"Status": "fail", "message": "End time must be after start time."}
+
+    return clinic_sys.create_reservation(
+        customer_id, pet_id, service_type, datetime_start_str, 
+        datetime_end_str, room_type, payment_method, card_id
     )
-    return result
 
 @mcp.tool()
 def get_all_reservations(customer_id: str):
