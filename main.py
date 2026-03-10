@@ -39,7 +39,8 @@ async def make_reservation(req: ReservationRequest):
         req.datetime_end_str,
         req.room_type,
         req.payment_method,
-        req.card_id
+        req.card_id,
+        req.money
     )
     return result
 
