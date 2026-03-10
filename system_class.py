@@ -1174,7 +1174,7 @@ class Clinic:
                             "message": "CardID Not Found.",
                         }
 
-                    pay_result = self.pay(price, payment_obj, money)
+                    pay_result = self.pay(price, payment_obj, price)
 
                     if pay_result != "Success":
                         room.busy_slot.remove((start_dt, end_dt))
