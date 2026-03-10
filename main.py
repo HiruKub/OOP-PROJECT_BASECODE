@@ -40,8 +40,18 @@ async def make_reservation(req: ReservationRequest):
         req.room_type,
         req.payment_method,
         req.card_id,
-        req.money
     )
+    return result
+
+@app.get("/Reservation/{customer_id}", tags=["Reservation"])
+def get_all_reservations(customer_id: str):
+
+    result = clinic_sys.get_customer_reservations(customer_id)
+    return result
+
+@app.delete("/CancelReservation", tags=["Reservation"])
+async def cancel_reservation(customer_id: str, pet_id: str, reservation_id: str):
+    result = clinic_sys.cancel_reservation(customer_id, pet_id, reservation_id)
     return result
 
 @app.get("/calculate_price/{customer_id}", tags=["Payment"])

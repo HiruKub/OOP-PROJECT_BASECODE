@@ -14,13 +14,21 @@ class Notification:
 # Reservation Class
 
 
-class Reservation:
+class Reservation(ABC):
     def __init__(self, reservation_id, customer, pet, time):
         self.reservation_id = reservation_id
         self.customer = customer
         self.pet = pet
         self.time = time
         self.status = "confirmed"
+        
+    @abstractmethod
+    def get_details(self):
+        pass
+    
+    @property
+    def id(self):
+        return self.reservation_id
 
 
 class GroomingReservation(Reservation):
@@ -32,17 +40,27 @@ class GroomingReservation(Reservation):
 
 
 class MedicalReservation(Reservation):
-    def __init__(self, reservation_id, customer, pet, time, doctor):
-        super().__init__(reservation_id, customer, pet, time)
-        self.doctor = doctor
+    def __init__(self, reservation_id, customer, pet, time_start, time_end, doctor):
+        super().__init__(reservation_id, customer, pet, time_start)
+        self.time_end = time_end
+        self.__doctor = doctor 
 
+    @property
+    def doctor(self):
+        return self.__doctor
+        
+    @property
+    def get_time_start_and_end(self):
+        return self.time, self.time_end
+        
     def get_details(self):
-        return f"[Medical Appointment] with Dr.{self.doctor.name} for {self.pet.name}"
+        return f"[Medical Appointment] with Dr.{self.__doctor.name} for {self.pet.name}"
 
 
 class HotelReservation(Reservation):
     def __init__(self, reservation_id, customer, pet, time_start, time_end, room, total_price, payment):
         super().__init__(reservation_id, customer, pet, time_start)
+        self.time_end = time_end
         self.room = room
         self.price = total_price
         self.payment = payment
@@ -50,6 +68,10 @@ class HotelReservation(Reservation):
     @property
     def get_hotel_reservation_price(self):
         return self.price
+    
+    @property
+    def get_time_start_and_end(self):
+        return self.time , self.time_end
 
     def get_details(self):
         return f"[Hotel Reservation] in {self.room.get_details()} for {self.pet.name} (Price: {self.price})"
@@ -150,6 +172,10 @@ class RecordService:
     @property
     def is_paid(self):
         return self.__is_paid
+    
+    @property
+    def sub_service(self):
+        return self.__sub_service
     
     @is_paid.setter
     def is_paid (self,paid = True) :
@@ -406,6 +432,10 @@ class Customer:
     @property
     def card(self):
         return self.__card
+    
+    @property
+    def reservation(self):
+        return self.__reservation
 
 
 class Member(Customer):
@@ -555,23 +585,37 @@ class Coupon :
 
 
 class TimeSchedule:
-    def __init__(self):
-        # ["2023-10-27 10:00", "2023-10-27 11:00"]
-        self.__busy_slots = []
+    def __init__(self, capacity=1):
+        self.__busy_slots = [] # เก็บเป็น Tuple: [(start_dt, end_dt)]
+        self.__capacity = capacity
+        
+        
+    @property
+    def busy_slot(self):
+        return self.__busy_slots
 
-    def search_availability(self, time: str):
-        if time not in self.__busy_slots:
+    def check_availability(self, time_start: datetime, time_end: datetime) -> bool:
+        overlap_count = 0
+        for busy_start, busy_end in self.__busy_slots:
+            # เช็คว่าเวลาทับซ้อนกันไหม
+            if time_start < busy_end and time_end > busy_start:
+                overlap_count += 1
+                
+        if overlap_count < self.__capacity:
             return True
         return False
 
-    def update_schedule(self, time: str) -> bool:
-        if self.search_availability(time):
-            self.__busy_slots.append(time)
-            print(f"Schedule updated: Booked at {time}")
+    def add_schedule(self, time_start: datetime, time_end: datetime) -> bool:
+        if self.check_availability(time_start, time_end):
+            self.__busy_slots.append((time_start, time_end))
             return True
-        else:
-            print(f"Schedule update failed: {time} is already busy")
-            return False
+        return False
+        
+    def remove_schedule(self, time_start: datetime, time_end: datetime):
+        try:
+            self.__busy_slots.remove((time_start, time_end))
+        except ValueError:
+            pass
 
 
 class Employee:
@@ -580,7 +624,7 @@ class Employee:
     def __init__(self, emp_id, name):
         self.__employee_id = emp_id
         self.__name = name
-        self.__workschedule = TimeSchedule()
+        self.__workschedule = TimeSchedule(capacity=1)
 
     @property
     def name(self):
@@ -590,11 +634,14 @@ class Employee:
     def emp_id(self):
         return self.__employee_id
 
-    def get_avaliable_work(self, time: str):
-        return self.__workschedule.search_availability(time)
+    def get_avaliable_work(self, time_start: datetime, time_end: datetime):
+        return self.__workschedule.check_availability(time_start, time_end)
 
-    def update_timeslot(self, time: str):
-        return self.__workschedule.update_schedule(time)
+    def update_timeslot(self, time_start: datetime, time_end: datetime):
+        return self.__workschedule.add_schedule(time_start, time_end)
+        
+    def free_timeslot(self, time_start: datetime, time_end: datetime):
+        self.__workschedule.remove_schedule(time_start, time_end)
 
 
 # class Worker(Employee):
@@ -663,7 +710,7 @@ class Room:
         self.__room_id = room_id
         self.__room_type = room_type
         self.__capacity = capacity
-        self.__busy_slot = []  # [(start_dt,end_dt)]
+        self.__schedule = TimeSchedule(capacity=self.__capacity)
 
     def get_details(self):
         return f"ID: {self.__room_id}, Type: {self.__room_type}"
@@ -678,28 +725,20 @@ class Room:
 
     @property
     def busy_slot(self):
-        return self.__busy_slot
+        return self.__schedule.busy_slot
 
     @property
     def room_type(self):
         return self.__room_type
 
     def check_availability(self, time_start: datetime, time_end: datetime):
-        overlap_count = 0
-        # check Overlap
-        for busy_start, busy_end in self.__busy_slot:
-            if time_start < busy_end and time_end > busy_start:
-                overlap_count += 1
-
-        if overlap_count < self.__capacity:
-            return True
-        return False
+        return self.__schedule.check_availability(time_start, time_end)
 
     def book_room(self, time_start: datetime, time_end: datetime):
-        if self.check_availability(time_start, time_end):
-            self.__busy_slot.append((time_start, time_end))
-            return True
-        return False
+        return self.__schedule.add_schedule(time_start, time_end)
+        
+    def cancel_room(self, time_start: datetime, time_end: datetime):
+        self.__schedule.remove_schedule(time_start, time_end)
 
 
 class PrivateRoom(Room):
@@ -835,6 +874,50 @@ class Clinic:
             return True
         else:
             return False
+        
+    
+    def get_customer_reservations(self, customer_id: str):
+        customer = self.get_customer_info(customer_id)
+        if not customer:
+            return {"status": "fail", "message": "Customer not found"}
+
+        res_list = []
+        for res in customer.reservation:
+            res_info = {
+                "reservation_id": res.id,
+                "pet_name": res.pet.name,
+                "status": res.status,
+                "details": res.get_details() 
+            }
+
+            # แยกเก็บข้อมูลเฉพาะทางของแต่ละบริการ
+            if isinstance(res, HotelReservation):
+                start_dt, end_dt = res.get_time_start_and_end
+                res_info["type"] = "Hotel"
+                res_info["check_in"] = start_dt.strftime("%Y-%m-%d") 
+                res_info["check_out"] = end_dt.strftime("%Y-%m-%d") 
+                res_info["price"] = res.price
+                res_info["payment_status"] = "PAID"
+                
+            elif isinstance(res, MedicalReservation):
+                start_dt, end_dt = res.get_time_start_and_end
+                res_info["type"] = "Medical"
+                res_info["appointment_time"] = start_dt.strftime("%Y-%m-%d %H:%M") 
+                res_info["doctor"] = res.doctor.name
+                
+            elif isinstance(res, GroomingReservation):
+                res_info["type"] = "Grooming"
+                res_info["time"] = res.time.strftime("%Y-%m-%d %H:%M") 
+
+            res_list.append(res_info)
+
+        return {
+            "status": "success",
+            "customer_id": customer.id,
+            "customer_name": customer.name,
+            "total_reservations": len(res_list),
+            "reservations": res_list
+        }
 
     def register_customer(self, data: RegisterRequest):
         customer_id = self.generate_ID()
@@ -1166,7 +1249,7 @@ class Clinic:
                 return {"status": "fail", "message": "Invalid payment method"}
 
             original_time_duration = end_dt - start_dt
-            staying_time = max(1, original_time_duration.days)
+            staying_time = max(1, math.ceil(original_time_duration / timedelta(days=1)))
 
             # เผื่อใส่ไม่ตรง format
             room_type = room_type.lower()
@@ -1188,7 +1271,7 @@ class Clinic:
                         customer, payment_method, card_id)
 
                     if payment_obj == None:
-                        room.busy_slot.remove(start_dt, end_dt)
+                        room.cancel_room(start_dt, end_dt)
                         resource = None
                         return {
                             "status": "fail",
@@ -1198,7 +1281,7 @@ class Clinic:
                     pay_result = self.pay(price, payment_obj, price)
 
                     if pay_result != "Success":
-                        room.busy_slot.remove((start_dt, end_dt))
+                        room.cancel_room(start_dt, end_dt)
                         resource = None
                         return {
                             "status": "fail",
@@ -1228,8 +1311,8 @@ class Clinic:
 
         elif service_type.lower() == "medical":
             for emp in self.__employee:
-                if emp.Type == "Doctor" and emp.get_avaliable_work(time_start):
-                    if emp.update_timeslot(time_start):
+                if emp.Type == "Doctor" and emp.get_avaliable_work(start_dt, end_dt):
+                    if emp.update_timeslot(start_dt, end_dt):
                         resource = emp
                         break
 
@@ -1245,8 +1328,8 @@ class Clinic:
                     reservation_id,
                     customer,
                     pet,
-                    start_dt.date(),
-                    end_dt.date(),
+                    start_dt,
+                    end_dt,
                     resource,
                     price,
                     payment_method,
@@ -1256,7 +1339,7 @@ class Clinic:
 
             elif service_type.lower() == "medical":
                 new_reservation = MedicalReservation(
-                    reservation_id, customer, pet, start_dt, resource
+                    reservation_id, customer, pet, start_dt,end_dt, resource
                 )
 
             self.__reservation.append(new_reservation)
@@ -1290,6 +1373,52 @@ class Clinic:
                 "status": "fail",
                 "message": f"No available resource for {service_type} at {start_dt}",
             }
+
+    def cancel_reservation(self,customer_id, pet_id,reservation_id):
+        customer = self.get_customer_info(customer_id)
+        if not customer:
+            return {"status": "fail", "message": "Customer not found"}
+        
+        pet = customer.get_pet_info(pet_id)
+        if not pet:
+            return {"status": "fail", "message": "Pet not found"}
+        
+        for reservation in customer.reservation:
+            if reservation.id == reservation_id:
+                if isinstance(reservation,HotelReservation):
+                    start_dt,end_dt = reservation.get_time_start_and_end
+                    reservation.room.cancel_room(start_dt, end_dt)
+                    for big_service in pet.service:
+                        if big_service.is_paid == False:
+                            service_to_remove = None
+                            for sub_service in big_service.sub_service:
+                                if sub_service.type == "Hotel" and sub_service.is_from_reservation:
+                                    service_to_remove = sub_service
+                                    break
+
+                            if service_to_remove:
+                                big_service.sub_service.remove(service_to_remove)
+                                if len(big_service.sub_service) == 0:
+                                    pet.service.remove(big_service)
+                                break
+                elif isinstance(reservation, MedicalReservation):
+                    start_dt, end_dt = reservation.get_time_start_and_end
+                    reservation.doctor.free_timeslot(start_dt, end_dt)
+                
+                else:
+                    pass
+                customer.reservation.remove(reservation)
+                return {
+                    "status": "success",
+                    "message": f"Reservation {reservation_id} has been successfully cancelled."
+                }
+        else:
+            return {
+                "status" : "fail",
+                "message" : f"{reservation_id} not found in any reservation in Pet : {pet.name}"
+            }
+        pass
+
 
     def medical_treatment(self, data: TreatmentRequest):
         doctor = self.get_doctor_info(data.doctor_id)
@@ -1368,7 +1497,7 @@ class Clinic:
             return {"Status": "Error", "Message": "Admit service for today already create"}
 
         resource = None
-        time_start = datetime.now()
+        time_start = datetime.now().replace(microsecond=0)
         time_end = time_start + timedelta(days=1)
         staying_time = 1
         price = 0
