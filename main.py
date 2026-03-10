@@ -179,7 +179,7 @@ def reward_card_count (customer_id : str) :
 if __name__ == "__main__":
     mcp.run()
 
-# docker run -it --rm -p 8000:8000 pet-clinic-api
+# docker run -it --rm pet-clinic-api
 # fastapi dev main.py
 
 # จอง Hotel (จ่ายผ่าน QRCode)
