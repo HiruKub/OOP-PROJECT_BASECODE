@@ -1,6 +1,3 @@
-from fastapi import FastAPI
-import uvicorn
-from fastapi import Query
 from system_class import *
 from fastmcp import FastMCP
 
