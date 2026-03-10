@@ -1256,6 +1256,7 @@ class Clinic:
 
             # เผื่อใส่ไม่ตรง format
             room_type = room_type.lower()
+            # Not have VIP or let Vip be privateroom
             if room_type == "private":
                 room_type = "privateroom"
             elif room_type == "share":
