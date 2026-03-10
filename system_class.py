@@ -784,7 +784,7 @@ class Clinic:
         c1.add_pet(p1)
         c1.add_card(Card("1234-5678"))
         c1.deposit_to_card("1234-5678", 50000)
-        self.add_customer(c1)
+        self.add_customer(c1) 
         self.add_pet(p1)
         self.add_point(c1, 50000)
         for i in range(5) :
