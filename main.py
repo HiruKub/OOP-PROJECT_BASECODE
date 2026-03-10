@@ -177,8 +177,7 @@ def reward_card_count (customer_id : str) :
 #     main()
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1",
-                port=8000, log_level="info", reload=True)
+    mcp.run()
 
 # docker run -it --rm -p 8000:8000 pet-clinic-api
 # fastapi dev main.py
