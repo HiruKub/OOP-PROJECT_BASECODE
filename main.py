@@ -561,9 +561,11 @@ class PlatinumMember(Member):
         else :
             return "Not have rewards card"
     
-    def use_rewards_card (self) :
+    def use_rewards_card (self,pay = False) :
         if self.__rewards_card is not None :
             if self.__rewards_card.check_available() == True :
+                if pay :
+                    self.delete_reward_card()
                 return True
         return False
     
@@ -1054,7 +1056,7 @@ class Clinic:
                           price, list_pet_and_service, today, point)
         return payment
 
-    def start_calculate_total_price(self,customer_id,use_cp,use_rw_card) :
+    def start_calculate_total_price(self,customer_id,use_cp,use_rw_card,pay=False) :
         customer = self.get_customer_info(customer_id)
         if (customer == None) :
             return "Customer not found"
@@ -1087,7 +1089,7 @@ class Clinic:
             if use_rw_card == True :
                 if tier == "silver" or tier == "gold" :
                     return "silver/gold cannot use reward card"
-                result = customer.use_rewards_card()
+                result = customer.use_rewards_card(pay)
                 if result == True :
                     price = 0
                     return price 
@@ -1105,7 +1107,7 @@ class Clinic:
         return price
     
     def start_payment(self,customer_id,payment_type,card_ID=None,use_cp=False,use_rw_card=False,money=None) :
-        price = self.start_calculate_total_price(customer_id,use_cp,use_rw_card)
+        price = self.start_calculate_total_price(customer_id,use_cp,use_rw_card,pay=True)
         if type(price) is str:
             return price
         
