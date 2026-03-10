@@ -990,6 +990,7 @@ class Clinic:
 
     def get_payment_method_object(self, customer, payment_type, card_ID=None):
         payment_type = payment_type.lower()
+        method = None
         if payment_type == "qrcode":
             id = self.generate_ID()
             method = QRCode(id)
@@ -1103,7 +1104,7 @@ class Clinic:
     def create_payment(self, customer_id, method, price, list_pet_and_service, today, point=0):
         payment_ID = self.generate_ID()
         payment = Payment(customer_id, payment_ID, method,
-                          price, list_pet_and_service, today, point)
+                            price, list_pet_and_service, today, point)
         return payment
 
     def start_calculate_total_price(self,customer_id,use_cp,use_rw_card,pay=False) :
