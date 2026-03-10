@@ -249,6 +249,12 @@ class RecordService:
             if isinstance(service, GroomingService):
                 return True
         return False
+    
+    def check_has_hotel_admit_service(self) :
+        for service in self.__sub_service:
+            if isinstance(service, HotelService) and service.is_from_reservation == False:
+                return True
+        return False
 
 # ขอเพิ่ม Service คร่าวๆ ไว้ใช้ตอน Payment
 
@@ -1069,10 +1075,10 @@ class Clinic:
             rate = customer.get_rate
             if tier == "silver" :
                 is_limit = customer.check_is_limit()
-                if is_limit == False :
-                    discount = price*rate
-                    price = self.calculate_price_with_discount(price,discount)
-                    # customer.add_count_for_use_discount()
+                if is_limit == True :
+                    return price
+            discount = price*rate
+            price = self.calculate_price_with_discount(price,discount)
             if use_rw_card == True :
                 if tier == "silver" or tier == "gold" :
                     return "silver/gold cannot use reward card"
@@ -1389,6 +1395,10 @@ class Clinic:
                 "status": "Admit is failed",
                 "message": "No active medical service session found for this pet"
             }
+        
+        has_admit = unpaid_service.check_has_hotel_admit_service()
+        if has_admit :
+            return {"Status": "Error", "Message": "Admit service for today already create"}
 
         resource = None
         time_start = datetime.now()
