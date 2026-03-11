@@ -223,6 +223,7 @@ def search_all_med_service_in_customer(customer_id: str, pet_id: str):
 if __name__ == "__main__":
     mcp.run()
 
+# docker build -t pet-clinic-mcp .
 # docker run -it --rm pet-clinic-mcp
 # fastapi dev main.py
 
