@@ -196,6 +196,7 @@ def reward_card_count (customer_id : str) :
 if __name__ == "__main__":
     mcp.run()
 
+# docker build -t pet-clinic-mcp .
 # docker run -it --rm pet-clinic-mcp
 # fastapi dev main.py
 

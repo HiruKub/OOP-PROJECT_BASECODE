@@ -1482,12 +1482,20 @@ class Clinic:
             pet.append_big_service(new_big_service)
 
         if medical_service.should_admit == True:
-            admit_data = AdmitRequest(
-                doctor_id=data.doctor_id,
-                petID=data.petID,
-                type_service="Hotel",
-            )
-            self.start_pet_admit(admit_data)
+            already_has_room = False
+            for big_srv in pet.service:
+                for sub_srv in big_srv.get_service_list():
+                    if sub_srv == "Hotel":
+                        already_has_room = True
+                        break
+                    
+            if not already_has_room:
+                admit_data = AdmitRequest(
+                    doctor_id=data.doctor_id,
+                    petID=data.petID,
+                    type_service="Hotel",
+                )
+                self.start_pet_admit(admit_data)
 
         if isinstance(medical_service, MedicalService):
             self.__medical_service.append(
