@@ -69,6 +69,17 @@ def get_all_reservations(customer_id: str):
     result = clinic_sys.get_customer_reservations(customer_id)
     return result
 
+
+@mcp.tool()
+def get_all_notification(customer_id: str):
+    """show detail of all notification that customer have"""
+    customer = clinic_sys.get_customer_info(customer_id)
+    if customer == None:
+        return {"status": "fail", "message": "Customer not found. Please check customer_id."}
+    result = customer.get_all_notification()
+    return result
+
+
 @mcp.tool()
 def cancel_reservation(customer_id: str, pet_id: str, reservation_id: str):
     """cancel reservation after make reservation"""

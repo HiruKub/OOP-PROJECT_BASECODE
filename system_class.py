@@ -421,6 +421,9 @@ class Customer:
     
     def get_all_notification(self):
         return self.__notification.get_all_notification()
+    
+    def receive_notification(self, method_type: str, reservation_id: str):
+        self.__notification.send_confirmation(method_type, reservation_id)
 
     @property
     def pet(self):
@@ -1373,8 +1376,10 @@ class Clinic:
 
             if customer.email:
                 self.__notification.send_confirmation("EMAIL", reservation_id)
+                customer.receive_notification("EMAIL", reservation_id)
             else:
                 self.__notification.send_confirmation("SMS", reservation_id)
+                customer.receive_notification("SMS", reservation_id)
 
             if service_type.lower() == "hotel":
                 return {
