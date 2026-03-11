@@ -7,16 +7,19 @@ clinic_sys = Clinic()
 
 # fast api
 
+
 @mcp.tool()
 def root() -> dict:
     """Start Program"""
     return {"Pet Shop": "Online"}
 
+
 @mcp.tool()
-def add_card_information(customer_id :str , money : float) :
+def add_card_information(customer_id: str, money: float):
     """add card information after register customer"""
-    result = clinic_sys.register_card(customer_id ,money)
+    result = clinic_sys.register_card(customer_id, money)
     return result
+
 
 @mcp.tool()
 def make_register(data: RegisterRequest):
@@ -34,12 +37,12 @@ def make_register_pet(data: RegisterPetRequest):
 
 @mcp.tool()
 def make_reservation(
-    customer_id: str, 
-    pet_id: str, 
-    service_type: Literal["Hotel", "Medical", "Grooming"], 
-    datetime_start_str: str, 
-    datetime_end_str: str = None, 
-    room_type: Literal["PrivateRoom", "ShareRoom"] = None, 
+    customer_id: str,
+    pet_id: str,
+    service_type: Literal["Hotel", "Medical", "Grooming"],
+    datetime_start_str: str,
+    datetime_end_str: str = None,
+    room_type: Literal["PrivateRoom", "ShareRoom"] = None,
     payment_method: Literal["card", "qrcode"] = None,
     card_id: str = None,
     money: float = None
@@ -59,9 +62,10 @@ def make_reservation(
             return {"Status": "fail", "message": "End time must be after start time."}
 
     return clinic_sys.create_reservation(
-        customer_id, pet_id, service_type, datetime_start_str, 
+        customer_id, pet_id, service_type, datetime_start_str,
         datetime_end_str, room_type, payment_method, card_id
     )
+
 
 @mcp.tool()
 def get_all_reservations(customer_id: str):
@@ -86,6 +90,7 @@ def cancel_reservation(customer_id: str, pet_id: str, reservation_id: str):
     result = clinic_sys.cancel_reservation(customer_id, pet_id, reservation_id)
     return result
 
+
 @mcp.tool()
 def calculate_price(
     customer_id: str,
@@ -93,8 +98,10 @@ def calculate_price(
     use_rw_card: bool = False
 ):
     """calculate total price which already use discount by customer_id after make service"""
-    price = clinic_sys.start_calculate_total_price(customer_id, use_cp, use_rw_card)
+    price = clinic_sys.start_calculate_total_price(
+        customer_id, use_cp, use_rw_card)
     return str(price)
+
 
 @mcp.tool()
 def check_pet_services(pet_id: str):
@@ -104,7 +111,7 @@ def check_pet_services(pet_id: str):
         return {"status": "fail", "message": "Pet not found"}
 
     service_history = []
-    
+
     for idx, big_service in enumerate(pet.service):
         current_total_price = big_service.calculate_total_price()
         service_date = big_service.get_date
@@ -118,7 +125,7 @@ def check_pet_services(pet_id: str):
             "date_created": formatted_date,
             "is_paid": big_service.is_paid,
             "services_inside": big_service.get_service_list(),
-            "total_price_to_pay_now": current_total_price 
+            "total_price_to_pay_now": current_total_price
         })
 
     return {
@@ -128,6 +135,7 @@ def check_pet_services(pet_id: str):
         "total_service_boxes": len(pet.service),
         "history": service_history
     }
+
 
 @mcp.tool()
 def payment(customer_id: str, req: PaymentRequest):
@@ -142,11 +150,13 @@ def payment(customer_id: str, req: PaymentRequest):
     )
     return (result)
 
+
 @mcp.tool()
-def record_grooming_service(customer_id :str ,pet_id : str) :
+def record_grooming_service(customer_id: str, pet_id: str):
     """make grooming service after reservation or walkin"""
-    result = clinic_sys.record_service(customer_id,pet_id)
+    result = clinic_sys.record_service(customer_id, pet_id)
     return result
+
 
 @mcp.tool()
 def add_medical_treatment(data: TreatmentRequest):
@@ -162,6 +172,7 @@ def add_medical_treatment(data: TreatmentRequest):
         return {
             "Message": medical_treatment["Message"]
         }
+
 
 @mcp.tool()
 async def get_medical_treatments():
@@ -191,11 +202,26 @@ def exchage_coupon(customer_id: str):
     result = clinic_sys.point_to_coupon(customer_id)
     return result
 
+
 @mcp.tool()
-def reward_card_count (customer_id : str) :
+def reward_card_count(customer_id: str):
     """show count for use service in our clinic that collect in rewards card"""
     count = clinic_sys.reward_card_count(customer_id)
     return str(count)
+
+
+@mcp.tool()
+def search_all_med_service_in_customer(customer_id: str, pet_id: str):
+    """show all medical service of pet in customer"""
+    result = clinic_sys.search_medical_service_in_customer(customer_id, pet_id)
+
+    if isinstance(result, dict) and result.get("Status") == "Error":
+        return result
+
+    return {
+        "Status": "Success",
+        "Data": result
+    }
 
 # def main():
 #     print("Hello from oop-project-basecode!")
