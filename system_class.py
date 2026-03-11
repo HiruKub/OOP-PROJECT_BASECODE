@@ -772,12 +772,9 @@ class ShareRoom(Room):
 class Clinic:
     def __init__(self):
         self.__customer = []
-        self.__stocks = []
         self.__employee = []
         self.__rooms = []
-        self.__customer_payment = []
         self.__reservation = []
-        self.__grooming_history = []
         self.__pet = []
         self.__medical_service = []
         self.__notification = Notification()
