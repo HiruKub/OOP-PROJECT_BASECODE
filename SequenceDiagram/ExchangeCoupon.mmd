@@ -10,10 +10,10 @@ sequenceDiagram
         participant Member
         participant Coupon
 
-        UI ->>+ Clinic : exchange_coupon(customer_ID)
+        UI ->>+ Clinic : point_to_coupon(customer_id)
 
         loop
-            Clinic ->>+ Customer : search_customer(customer_ID)
+            Clinic ->>+ Customer : get_customer_info(customer_ID)
             Customer -->>- Clinic : return Customer
         end
         alt customer not found 
@@ -31,7 +31,7 @@ sequenceDiagram
                 Clinic -->> UI : return silver tier cannot use coupon
             end
 
-            Clinic ->>+ Member : get_point()
+            Clinic ->>+ Member : (getter)point
             Member -->>- Clinic : return point
 
             alt point < 50
