@@ -61,11 +61,13 @@ sequenceDiagram
                 alt tier=silver or tier=gold
                     Clinic -->> UI : return silver/gold tier cannot use reward card
                 end
-                Clinic ->>+ Member : get_reward_card()
+                Clinic ->>+ Member : use_reward_card(pay)
                 Member ->>+ RewardsCard : check_available()
                 RewardsCard -->>- Member : return True/False
                 alt True
-                    Member ->> Member : delete_reward_card()
+                    alt pay == False
+                        Member ->> Member : delete_reward_card()
+                    end
                     Member -->> Clinic : return True
                 else False
                     Member -->>- Clinic : return False
