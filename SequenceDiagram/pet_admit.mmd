@@ -1,15 +1,17 @@
 sequenceDiagram
     actor Doctor
     participant Clinic
-    %% participant DoctorClass
+    participant Customer
     participant Pet
     participant HotelService
 
     Doctor->>+Clinic: start_pet_admit(AdmitRequest)
 
     loop search pet
-    Clinic->>+Pet: get_pet_info(petID)
-    Pet-->>-Clinic: return pet_object
+        Clinic->>+Customer: get_pet_info(pet_id)
+        Customer ->>+ Pet : get_pet_info(pet_id)
+        Pet -->>- Customer : return Pet Object
+        Customer-->>-Clinic: return Pet Object 
     end
 
     loop search last unpaid service 
