@@ -11,78 +11,110 @@ sequenceDiagram
     participant CustomerClass
     participant Pet
     participant Room
+    participant TimeSc
     participant PaymentMethod
     participant Payment
+    participant RecordService
+    participant HotelService
     participant Reservation
     participant Notification
-    participant TimeSc
     
     Customer->>+Clinic: create_reservation(customer_id, pet_id, "Hotel", time, room_type, payment_method)
     
+    %% ค้นหาลูกค้าและสัตว์เลี้ยง
     loop search customer
-        Clinic->>+CustomerClass: get_customer_info(customer_id)
-        CustomerClass-->>-Clinic: return Customer
+    Clinic->>+CustomerClass: get_customer_info(customer_id)
+    CustomerClass-->>-Clinic: return Customer
     end
-    
+
     loop search pet
-        Clinic->>+Pet: get_pet_info(pet_id)
-        Pet-->>-Clinic: return Pet
+    Clinic->>+CustomerClass: get_pet_info(pet_id)
+    CustomerClass->>Pet: get_pet_info(pet_id)
+    Pet-->>CustomerClass: return Pet
+    CustomerClass-->>-Clinic: return Pet
     end
+    %% ลูปหาห้องและจอง
     loop search same room_type and available room
-        Clinic->>+Room: check_availability(time)
-        Room->>+TimeSc: check_available_slot
+        Clinic->>+Room: book_room(start_dt, end_dt)
+        Room->>+TimeSc: add_schedule(start_dt, end_dt)
         TimeSc-->>-Room: return True
         Room-->>-Clinic: return True 
-        Clinic->>+Room: book_room(time)
-        Room->>+TimeSc: update_busy_slot
-        TimeSc-->>-Room: return succes
-        Room-->>-Clinic: return True
         Clinic->>+Room: get_price
         Room-->>-Clinic: return price
     end
-    Clinic->>Clinic: payment_obj = get_payment_method_object(...)
+    
+    %% ดึงวิธีชำระเงิน
+    Clinic->>+Clinic: get_payment_method_object(...)
+    Clinic-->>-Clinic: return payment_obj
 
+    %% กรณีหาบัตรไม่เจอ
     opt payment_obj == None
-        Clinic->>Room: busy_slot.remove(time) (Rollback)
+        Clinic->>+Room: cancel_room(start_dt, end_dt)
+        Room->>+TimeSc: remove_schedule(start_dt, end_dt)
+        TimeSc-->>-Room: return
+        Room-->>-Clinic: return (Rollback Success)
         Clinic-->>Customer: return {"status": "fail", "message": "CardID Not Found."}
     end
 
-    Clinic->>+PaymentMethod: pay(price, payment_obj, price)
-    PaymentMethod-->>-Clinic: return pay_result
+    %% จ่ายเงิน
+    Clinic->>+Clinic: pay(price, payment_obj, price)
+    Clinic->>+PaymentMethod: validate_money(...)
+    PaymentMethod-->>-Clinic: return result
+    Clinic-->>-Clinic: return pay_result
 
+    %% กรณีเงินไม่พอ
     opt pay_result != "Success"
-        Clinic->>Room: busy_slot.remove(time) (Rollback)
-        Clinic-->>Customer: return {"status": "fail", "message": "Payment failed. Room reservation cancelled."}
+        Clinic->>+Room: cancel_room(start_dt, end_dt)
+        Room->>+TimeSc: remove_schedule(start_dt, end_dt)
+        TimeSc-->>-Room: return
+        Room-->>-Clinic: return (Rollback Success)
+        Clinic-->>Customer: return {"status": "fail", "message": "Payment failed..."}
     end
 
-    alt resource != None (มีห้องให้จองและจ่ายเงินผ่าน)
+    %% กรณีจองและจ่ายเงินผ่าน
+    alt resource != None 
         
-        Clinic->>Clinic: add_point(customer, price)
-        Clinic->>Payment: create Payment(...)
-        Payment-->>Clinic: return Payment
-        Clinic->>CustomerClass: add_payment(payment_record)
-        CustomerClass-->>Clinic: return succes
+        %% บันทึกการจ่ายเงิน
+        Clinic->>+Clinic: add_point(customer, price)
+        Clinic-->>-Clinic: return point
+        Clinic->>+Payment: create Payment(...)
+        Payment-->>-Clinic: return payment_record
+        Clinic->>+CustomerClass: add_payment(payment_record)
+        CustomerClass-->>-Clinic: return "Success"
 
-        Clinic->>Reservation: create HotelReservation()
-        Reservation-->>Clinic: Return Succes
-        Clinic->>Clinic: __reservation.append(new_reservation)
-        Clinic->>CustomerClass: add_reservation(new_reservation)
-        CustomerClass-->>Clinic: return succes
-        Clinic->>CustomerClass: get_email
-        CustomerClass-->>Clinic: return Email
+        %% บันทึก Service ให้สัตว์เลี้ยง (ส่วนที่ตกหล่น)
+        Clinic->>+RecordService: create RecordService(start_dt)
+        RecordService-->>-Clinic: return big_service
+        Clinic->>+HotelService: create HotelService(resource, start_dt, end_dt, price, True)
+        HotelService-->>-Clinic: return hotel_service
+        Clinic->>+RecordService: append_sub_service(hotel_service)
+        RecordService-->>-Clinic: return
+        Clinic->>+Pet: append_big_service(big_service)
+        Pet-->>-Clinic: return
+
+        %% สร้างใบการจอง
+        Clinic->>+Reservation: create HotelReservation(...)
+        Reservation-->>-Clinic: return new_reservation
+        Clinic->>+CustomerClass: add_reservation(new_reservation)
+        CustomerClass-->>-Clinic: return "Success"
+        
+        %% ระบบแจ้งเตือน
+        Clinic->>+CustomerClass: get email
+        CustomerClass-->>-Clinic: return Email
+        
         alt customer.email != None
-            Clinic->>+Notification: send_confirmation("EMAIL", reservation)
-            Notification-->>Customer: return Reservation Secces
+            Clinic->>+Notification: send_confirmation("EMAIL", reservation_id)
             Notification-->>-Clinic: return True
+            Clinic->>+CustomerClass: receive_notification("EMAIL", reservation_id)
+            CustomerClass-->>-Clinic: return
         else customer.phone != None
-            Clinic->>+Notification: send_confirmation("SMS", reservation)
-            Notification-->>Customer: return Notification
+            Clinic->>+Notification: send_confirmation("SMS", reservation_id)
             Notification-->>-Clinic: return True
+            Clinic->>+CustomerClass: receive_notification("SMS", reservation_id)
+            CustomerClass-->>-Clinic: return
         end
         
         Clinic-->>Customer: return {"status": "success", ...}
     else resource == None (ห้องเต็ม)
-        Clinic-->>Customer: return {"status": "fail", ...}
+        Clinic-->>-Customer: return {"status": "fail", "message": "No available resource..."}
     end
-    
-    deactivate Clinic

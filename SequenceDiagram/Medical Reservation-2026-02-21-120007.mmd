@@ -22,8 +22,10 @@ sequenceDiagram
     end
     
     loop search pet
-        Clinic ->>+ Pet: get_pet_info(pet_id)
-        Pet -->>- Clinic: return Pet
+        Clinic->>+CustomerClass: get_pet_info(pet_id)
+        CustomerClass->>Pet: get_pet_info(pet_id)
+        Pet-->>CustomerClass: return Pet
+        CustomerClass-->>-Clinic: return Pet
     end
     
     Clinic->>+Doctor: get_avaliable_work(time)
