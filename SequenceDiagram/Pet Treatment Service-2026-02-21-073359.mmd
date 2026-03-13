@@ -32,8 +32,8 @@ sequenceDiagram
     
     loop search pet
         Clinic->>+Customer: get_pet_info(pet_id)
-        Customer ->>+ Pet : (getter) pet_id()
-        Pet -->>- Customer : return pet_id
+        Customer ->>+ Pet : get_pet_info(pet_id)
+        Pet -->>- Customer : return Pet Object
         alt found   
             Customer-->>Clinic: return Pet Object 
         else not found
